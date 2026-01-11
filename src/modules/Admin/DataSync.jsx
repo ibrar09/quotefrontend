@@ -21,22 +21,33 @@ const DataSync = () => {
             // Remove trailing slash from base if exists, then add single /api
             const base = API_BASE_URL.replace(/\/$/, "");
             const endpoint = `${base}/api/master/${type === 'stores' ? 'upload-stores' : 'upload-pricelist'}`;
+
+            console.log(`📡 [SYNC] Starting upload to: ${endpoint}`);
             const response = await fetch(endpoint, {
                 method: 'POST',
                 body: formData,
             });
 
-            const result = await response.json();
+            console.log(`📡 [SYNC] Server responded with status: ${response.status}`);
 
-            if (response.ok) {
-                setStatus(prev => ({
-                    ...prev,
-                    [type]: { type: 'success', message: `Success! ${result.count || 0} records updated.` }
-                }));
+            const contentType = response.headers.get("content-type");
+            if (contentType && contentType.indexOf("application/json") !== -1) {
+                const result = await response.json();
+                if (response.ok) {
+                    setStatus(prev => ({
+                        ...prev,
+                        [type]: { type: 'success', message: `Success! ${result.count || 0} records updated.` }
+                    }));
+                } else {
+                    throw new Error(result.error || result.message || 'Upload failed');
+                }
             } else {
-                throw new Error(result.message || 'Upload failed');
+                const text = await response.text();
+                console.error('📡 [SYNC] Non-JSON response received:', text.substring(0, 200));
+                throw new Error(`Unexpected server response (${response.status}). Check logs.`);
             }
         } catch (error) {
+            console.error('📡 [SYNC] Error during upload:', error);
             setStatus(prev => ({
                 ...prev,
                 [type]: { type: 'error', message: error.message }
