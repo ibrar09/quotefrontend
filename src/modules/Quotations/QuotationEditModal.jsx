@@ -517,33 +517,23 @@ const QuotationEditModal = ({ quotation, onClose, onUpdated }) => {
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             <div className="flex flex-col gap-2">
                                 <label className="text-[10px] font-black uppercase text-gray-500 mb-1 ml-1">Invoice Status</label>
-                                <div className="flex gap-2 items-center">
-                                    <input
-                                        type="text"
-                                        placeholder="Enter status"
-                                        value={formData.Finance.invoice_status || ""}
-                                        onChange={e => handleChange("Finance.invoice_status", e.target.value)}
-                                        className={`flex-1 border-2 rounded-xl px-4 py-2.5 text-sm font-bold ${darkMode
-                                            ? "bg-gray-800 border-gray-700 text-white"
-                                            : "bg-gray-50 border-gray-200 text-gray-900"}`}
-                                    />
-                                    <select
-                                        value=""
-                                        onChange={e => {
-                                            if (e.target.value) handleChange("Finance.invoice_status", e.target.value);
-                                            e.target.value = "";
-                                        }}
-                                        className={`border-2 rounded-xl px-3 py-2 text-sm font-bold ${darkMode
-                                            ? "bg-gray-800 border-gray-700 text-white"
-                                            : "bg-gray-50 border-gray-200 text-gray-900"}`}
-                                    >
-                                        <option value="">Select</option>
-                                        <option value="PAID">Paid</option>
-                                        <option value="UNPAID">Unpaid</option>
-                                        <option value="PENDING">Pending</option>
-                                        <option value="CANCELLED">Cancelled</option>
-                                    </select>
-                                </div>
+                                <select
+                                    value={formData.Finance.invoice_status || "NOT_SUBMITTED"}
+                                    onChange={e => handleChange("Finance.invoice_status", e.target.value)}
+                                    className={`border-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all focus:outline-none focus:ring-4 ${darkMode
+                                        ? "bg-gray-800 border-gray-700 text-white focus:ring-cyan-500/20 focus:border-cyan-500"
+                                        : "bg-gray-50 border-gray-200 text-gray-900 focus:ring-yellow-500/20 focus:border-yellow-500"
+                                        }`}
+                                >
+                                    <option value="NOT_SUBMITTED">Not Submitted</option>
+                                    <option value="SUBMITTED">Submitted</option>
+                                    <option value="EW">Extra Works (EW)</option>
+                                    <option value="PENDING">Pending</option>
+                                    <option value="PAID">Paid</option>
+                                    <option value="PARTIAL">Partial Payment</option>
+                                    <option value="UNPAID">Unpaid</option>
+                                    <option value="CANCELLED">Cancelled</option>
+                                </select>
                             </div>
                             <Input label="Invoice Number" darkMode={darkMode} value={formData.Finance.invoice_no} onChange={v => handleChange("Finance.invoice_no", v)} />
                             <Input label="Invoice Date" darkMode={darkMode} value={formData.Finance.invoice_date} onChange={v => handleChange("Finance.invoice_date", v)} type="date" />

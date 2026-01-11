@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Edit, Download } from 'lucide-react';
+import { Plus, Edit, Download, Search } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import QuotationEditModal from './QuotationEditModal';
 import { useTheme } from '../../context/ThemeContext';
@@ -14,6 +14,7 @@ const QuotationList = () => {
     const [quotations, setQuotations] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('ALL');
+    const [searchTerm, setSearchTerm] = useState('');
     const [selectedQuotation, setSelectedQuotation] = useState(null);
     const navigate = useNavigate();
     const { darkMode, colors, themeStyles } = useTheme();
@@ -37,9 +38,18 @@ const QuotationList = () => {
         }
     };
 
-    const filteredQuotations = quotations.filter(q =>
-        filter === 'ALL' ? true : q.quote_status === filter
-    );
+    const filteredQuotations = quotations.filter(q => {
+        const matchesStatus = filter === 'ALL' ? true : q.quote_status === filter;
+        const s = searchTerm.toLowerCase();
+        const matchesSearch = !searchTerm ||
+            (q.quote_no && q.quote_no.toLowerCase().includes(s)) ||
+            (q.mr_no && q.mr_no.toLowerCase().includes(s)) ||
+            (q.work_description && q.work_description.toLowerCase().includes(s)) ||
+            (q.brand && q.brand.toLowerCase().includes(s)) ||
+            (q.Store?.brand && q.Store.brand.toLowerCase().includes(s));
+
+        return matchesStatus && matchesSearch;
+    });
 
     // Helper to style different statuses
     const getStatusColor = (status) => {
@@ -246,6 +256,25 @@ const QuotationList = () => {
                 </div>
             </div>
 
+            {/* Search Bar */}
+            <div className="mb-6">
+                <div className="relative max-w-md w-full">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Search size={16} className="text-gray-400" />
+                    </div>
+                    <input
+                        type="text"
+                        placeholder="Search Quote #, MR #, Brand or Description..."
+                        className={`block w-full pl-10 pr-3 py-2 border rounded-lg leading-5 transition duration-150 ease-in-out sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#00a8aa] ${darkMode
+                                ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500'
+                                : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+                            }`}
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+            </div>
+
             {/* Expanded Filters */}
             <div className={`flex overflow-x-auto gap-2 border-b ${darkMode ? 'border-gray-700' : 'border-gray-300'} mb-6 pb-2 -mx-4 px-4 md:mx-0 md:px-0`}>
                 {statuses.map(status => (
@@ -346,10 +375,10 @@ const QuotationList = () => {
                                     <td className="p-2">{q.mr_date || '-'}</td>
                                     <td className="p-2">{q.mr_no || '-'}</td>
                                     <td className="p-2">{q.pr_no || '-'}</td>
-                                    <td className="p-2">{q.brand || q.Store?.brand || '-'}</td>
-                                    <td className="p-2">{q.location || '-'}</td>
-                                    <td className="p-2">{q.city || '-'}</td>
-                                    <td className="p-2">{q.region || '-'}</td>
+                                    <td className="p-2">{q.brand || q.brand_name || q.Store?.brand || '-'}</td>
+                                    <td className="p-2">{q.location || q.Store?.mall || '-'}</td>
+                                    <td className="p-2">{q.city || q.Store?.city || '-'}</td>
+                                    <td className="p-2">{q.region || q.Store?.region || '-'}</td>
                                     <td className="p-2 truncate max-w-[120px]">{q.work_description}</td>
                                     <td className="p-2 font-bold text-green-600">{q.work_status || '-'}</td>
                                     <td className="p-2">{q.completion_date || '-'}</td>

@@ -21,48 +21,57 @@ const QuotationPrintView = () => {
     useEffect(() => {
         const fetchQuote = async () => {
             try {
-                console.log(`Fetching quote from: ${FINAL_API_URL}/api/quotations/${id}`);
-                const res = await axios.get(`${FINAL_API_URL}/api/quotations/${id}`);
-                if (res.data.success) {
-                    const q = res.data.data;
-                    setHeader({
-                        date: q.createdAt ? q.createdAt.split('T')[0] : new Date().toISOString().split('T')[0],
-                        attentionTo: q.Store?.fm_manager || q.Store?.fm_supervisor || '',
-                        version: '1.0',
-                        brand: q.brand || q.Store?.brand || '',
-                        quoteNo: q.quote_no || '',
-                        validity: '30 Days',
-                        location: q.location || q.Store?.mall || '',
-                        mrNo: q.mr_no || '',
-                        mrRecDate: q.mr_date || '',
-                        city: q.city || q.Store?.city || '',
-                        storeCcid: q.oracle_ccid || '',
-                        mrPriority: 'Normal',
-                        mrDesc: q.work_description || '',
-                        openingDate: q.store_opening_date || '',
-                        currency: 'SAR',
-                        description: q.work_description || '',
-                        continuous_assessment: q.continuous_assessment || '',
-                        completionDate: q.completion_date || ''
-                    });
-
-                    if (q.JobImages && q.JobImages.length > 0) {
-                        setImages(q.JobImages.map(img => img.image_data));
-                    }
-
-                    const itemsSource = q.JobItems || q.QuoteItems || [];
-                    setItems(itemsSource.map(i => ({
-                        id: i.id,
-                        code: i.item_code || '',
-                        description: i.description || '',
-                        unit: i.unit || 'PCS',
-                        qty: Number(i.quantity || 0),
-                        material: Number(i.material_price || 0),
-                        labor: Number(i.labor_price || 0)
-                    })));
+                let q;
+                if (String(id).startsWith('preview-')) {
+                    const previewId = id.replace('preview-', '');
+                    console.log(`Fetching preview quote from: ${FINAL_API_URL}/api/pdf/preview-data/${previewId}`);
+                    const res = await axios.get(`${FINAL_API_URL}/api/pdf/preview-data/${previewId}`);
+                    if (!res.data.success) throw new Error(res.data.message || 'Preview not found');
+                    q = res.data.data;
                 } else {
-                    setError('Quotation not found');
+                    console.log(`Fetching quote from: ${FINAL_API_URL}/api/quotations/${id}`);
+                    const res = await axios.get(`${FINAL_API_URL}/api/quotations/${id}`);
+                    if (!res.data.success) throw new Error(res.data.message || 'Quotation not found');
+                    q = res.data.data;
                 }
+
+                setHeader({
+                    date: q.createdAt ? q.createdAt.split('T')[0] : new Date().toISOString().split('T')[0],
+                    attentionTo: q.Store?.fm_manager || q.Store?.fm_supervisor || q.attentionTo || '',
+                    version: q.version || '1.0',
+                    brand: q.brand || q.Store?.brand || '',
+                    quoteNo: q.quote_no || '',
+                    validity: q.validity || '30 Days',
+                    location: q.location || q.Store?.mall || '',
+                    mrNo: q.mr_no || '',
+                    mrRecDate: q.mr_date || '',
+                    city: q.city || q.Store?.city || '',
+                    storeCcid: q.oracle_ccid || '',
+                    mrPriority: q.mr_priority || 'Normal',
+                    mrDesc: q.work_description || '',
+                    openingDate: q.store_opening_date || '',
+                    currency: q.currency || 'SAR',
+                    description: q.work_description || '',
+                    continuous_assessment: q.continuous_assessment || '',
+                    completionDate: q.completion_date || ''
+                });
+
+                if (q.JobImages && q.JobImages.length > 0) {
+                    setImages(q.JobImages.map(img => img.image_data));
+                } else if (q.images && q.images.length > 0) {
+                    setImages(q.images); // Preview uses 'images' array directly
+                }
+
+                const itemsSource = q.JobItems || q.QuoteItems || q.items || [];
+                setItems(itemsSource.map((i, idx) => ({
+                    id: i.id || idx,
+                    code: i.item_code || '',
+                    description: i.description || '',
+                    unit: i.unit || 'PCS',
+                    qty: Number(i.quantity || 0),
+                    material: Number(i.material_price || 0),
+                    labor: Number(i.labor_price || 0)
+                })));
             } catch (err) {
                 console.error(err);
                 setError('Failed to load quotation');

@@ -44,15 +44,15 @@ const IntakeList = () => {
     const handleMakeQuotation = (row) => {
         navigate("/quotations/new-quotation", {
             state: {
-                mrNo: row.mr_no,
-                storeCcid: row.Store.oracle_ccid,
-                workDescription: row.work_description,
-                brand: row.Store.brand,
-                city: row.Store.city,
-                location: row.Store.mall,
-                region: row.Store.region,
-                supervisor: row.Store.fm_supervisor,
-                manager: row.Store.fm_manager,
+                mrNo: row.mr_no || '',
+                storeCcid: row.Store?.oracle_ccid || row.oracle_ccid || '',
+                workDescription: row.work_description || '',
+                brand: row.Store?.brand || row.brand || '',
+                city: row.Store?.city || row.city || '',
+                location: row.Store?.mall || row.location || '',
+                region: row.Store?.region || row.region || '',
+                supervisor: row.Store?.fm_supervisor || '',
+                manager: row.Store?.fm_manager || '',
             },
         });
     };
@@ -82,8 +82,8 @@ const IntakeList = () => {
             {/* TABLE */}
             <div
                 className={`overflow-x-auto rounded-lg shadow-md border ${darkMode
-                        ? "bg-gray-900 border-gray-700"
-                        : "bg-white border-gray-200"
+                    ? "bg-gray-900 border-gray-700"
+                    : "bg-white border-gray-200"
                     }`}
             >
                 <table className="w-full border-collapse text-sm">
@@ -126,8 +126,8 @@ const IntakeList = () => {
                                 <tr
                                     key={row.id}
                                     className={`border-t ${darkMode
-                                            ? "hover:bg-gray-800"
-                                            : "hover:bg-gray-50"
+                                        ? "hover:bg-gray-800"
+                                        : "hover:bg-gray-50"
                                         } transition`}
                                 >
                                     {/* ACTIONS */}
@@ -160,28 +160,28 @@ const IntakeList = () => {
                                     <td className="p-2 border-r font-semibold">{row.mr_no}</td>
                                     <td className="p-2 border-r text-gray-500">{row.mr_date}</td>
                                     <td className="p-2 border-r font-mono text-xs">
-                                        {row.Store.oracle_ccid}
+                                        {row.Store?.oracle_ccid || row.oracle_ccid}
                                     </td>
                                     <td className="p-2 border-r font-semibold">
-                                        {row.Store.brand}
+                                        {row.Store?.brand || row.brand}
                                     </td>
-                                    <td className="p-2 border-r">{row.Store.store_name}</td>
-                                    <td className="p-2 border-r">{row.Store.mall}</td>
-                                    <td className="p-2 border-r">{row.Store.city}</td>
-                                    <td className="p-2 border-r">{row.Store.region}</td>
-                                    <td className="p-2 border-r">{row.Store.division}</td>
-                                    <td className="p-2 border-r">{row.Store.store_type}</td>
+                                    <td className="p-2 border-r">{row.Store?.store_name || 'Manual Entry'}</td>
+                                    <td className="p-2 border-r">{row.Store?.mall || row.location || '-'}</td>
+                                    <td className="p-2 border-r">{row.Store?.city || row.city || '-'}</td>
+                                    <td className="p-2 border-r">{row.Store?.region || row.region || '-'}</td>
+                                    <td className="p-2 border-r">{row.Store?.division || '-'}</td>
+                                    <td className="p-2 border-r">{row.Store?.store_type || '-'}</td>
                                     <td className="p-2 border-r text-right font-medium">
-                                        {row.Store.sqm}
+                                        {row.Store?.sqm || '-'}
                                     </td>
                                     <td className="p-2 border-r">
-                                        {row.Store.fm_supervisor}
+                                        {row.Store?.fm_supervisor || '-'}
                                     </td>
                                     <td className="p-2 border-r">
-                                        {row.Store.fm_manager}
+                                        {row.Store?.fm_manager || '-'}
                                     </td>
                                     <td className="p-2 border-r font-semibold">
-                                        {row.Store.store_status}
+                                        {row.Store?.store_status || 'OK'}
                                     </td>
                                     <td
                                         className="p-2 max-w-[280px] truncate text-gray-600"

@@ -94,12 +94,14 @@ const PriceList = () => {
                     <table className="w-full text-left border-collapse text-xs">
                         <thead>
                             <tr className={themeStyles.tableHeader}>
-                                <th className="p-5 border-r border-white/5 tracking-widest">Item Details</th>
-                                <th className="p-5 border-r border-white/5 tracking-widest">Unit</th>
-                                <th className="p-5 border-r border-white/5 tracking-widest text-right">Material</th>
-                                <th className="p-5 border-r border-white/5 text-right tracking-widest">Labor</th>
-                                <th className="p-5 border-r border-white/5 text-right tracking-widest">Total (SAR)</th>
-                                <th className="p-5 text-right tracking-widest">Status</th>
+                                <th className="p-5 border-r border-white/5 tracking-widest w-32">Code</th>
+                                <th className="p-5 border-r border-white/5 tracking-widest w-32">Category</th>
+                                <th className="p-5 border-r border-white/5 tracking-widest">Description</th>
+                                <th className="p-5 border-r border-white/5 tracking-widest w-20 text-center">Unit</th>
+                                <th className="p-5 border-r border-white/5 tracking-widest text-right w-24">Material</th>
+                                <th className="p-5 border-r border-white/5 text-right tracking-widest w-24">Labor</th>
+                                <th className="p-5 border-r border-white/5 text-right tracking-widest w-28">Total</th>
+                                <th className="p-5 text-right tracking-widest">Notes</th>
                             </tr>
                         </thead>
                         <tbody className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
@@ -118,29 +120,46 @@ const PriceList = () => {
                                 </tr>
                             ) : filteredItems.map((item) => (
                                 <tr key={item.code} className={themeStyles.tableRow}>
-                                    <td className="p-5">
-                                        <div className="flex flex-col">
-                                            <span className={`text-[10px] font-bold uppercase tracking-tighter mb-1 select-all ${darkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>{item.code}</span>
-                                            <span className={`text-sm font-black uppercase leading-tight ${colors.text}`}>{item.description}</span>
+                                    <td className="p-5 align-top">
+                                        <span className={`text-[10px] font-bold uppercase tracking-tighter select-all ${darkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                                            {item.code}
+                                        </span>
+                                    </td>
+                                    <td className="p-5 align-top">
+                                        <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest ${darkMode ? 'bg-blue-900/40 text-blue-400' : 'bg-blue-50 text-blue-600'}`}>
+                                            {item.type || 'Standard'}
+                                        </span>
+                                    </td>
+                                    <td className="p-5 align-top">
+                                        <div className="flex flex-col gap-1">
+                                            <span className={`text-sm font-black uppercase leading-tight ${colors.text}`}>
+                                                {item.description}
+                                            </span>
+                                            {(item.remarks || item.comments) && (
+                                                <div className="mt-2 space-y-1">
+                                                    {item.remarks && <p className="text-[10px] text-gray-500 italic">**Remarks:** {item.remarks}</p>}
+                                                    {item.comments && <p className="text-[10px] text-gray-400 font-medium">**Note:** {item.comments}</p>}
+                                                </div>
+                                            )}
                                         </div>
                                     </td>
-                                    <td className="p-5">
+                                    <td className="p-5 align-top text-center">
                                         <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest ${darkMode ? 'bg-gray-900 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
                                             {item.unit}
                                         </span>
                                     </td>
-                                    <td className={`p-5 text-right font-bold text-sm ${colors.textSecondary}`}>
+                                    <td className={`p-5 align-top text-right font-bold text-sm ${colors.textSecondary}`}>
                                         {Number(item.material_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                     </td>
-                                    <td className={`p-5 text-right font-bold text-sm ${colors.textSecondary}`}>
+                                    <td className={`p-5 align-top text-right font-bold text-sm ${colors.textSecondary}`}>
                                         {Number(item.labor_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                     </td>
-                                    <td className="p-5 text-right">
+                                    <td className="p-5 align-top text-right">
                                         <span className={`text-md font-black ${colors.text}`}>
                                             {(Number(item.material_price || 0) + Number(item.labor_price || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                         </span>
                                     </td>
-                                    <td className="p-5 text-right text-gray-400">
+                                    <td className="p-5 align-top text-right text-gray-400">
                                         <button className={`p-2 rounded-lg transition-all transform hover:rotate-45 active:scale-95 ${darkMode ? 'hover:text-white hover:bg-white/10' : 'hover:text-emerald-600 hover:bg-emerald-50'}`}>
                                             <ArrowUpRight size={18} />
                                         </button>
