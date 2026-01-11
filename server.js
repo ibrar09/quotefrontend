@@ -9,6 +9,13 @@ dotenv.config();
 
 const app = express();
 
+// Request Logging Middleware
+app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    if (req.method === 'POST') console.log('Body keys:', Object.keys(req.body));
+    next();
+});
+
 // Middleware
 const allowedOrigins = [
     process.env.FRONTEND_URL || 'http://localhost:5173',
