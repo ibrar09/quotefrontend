@@ -405,7 +405,7 @@ const NewQuotation = () => {
     // 2. Generate PDF using the ID
     try {
       // The frontend route that displays the print view
-      const pdfUrl = `${window.location.origin} /quotations/print-view/${quoteId}`;
+      const pdfUrl = `${window.location.origin}/quotations/print-view/${quoteId}`;
       console.log("Requesting PDF for:", pdfUrl);
 
       const res = await axios.post(`${API_BASE_URL}/api/pdf/generate`, { url: pdfUrl }, {
