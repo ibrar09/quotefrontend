@@ -1,0 +1,3 @@
+oracle_ccid,region,city,mall,division,brand,store_name,fm_supervisor,fm_manager,store_status
+12345,Central,Riyadh,Riyadh Park,Apparel,Nike,Nike Riyadh Park,Ahmed,Khalid,ACTIVE
+67890,Western,Jeddah,Red Sea Mall,Wellness,Adidas,Adidas Red Sea,Sara,Fatima,CLOSED

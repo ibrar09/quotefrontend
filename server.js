@@ -1,71 +1,66 @@
 import express from 'express';
 import cors from 'cors';
+import sequelize from './config/db.js'; // Ensure you add .js
 import dotenv from 'dotenv';
-import sequelize from './config/db.js';
 import apiRouter from './routes/index.js';
 
+// Initialize dotenv
 dotenv.config();
 
 const app = express();
 
-// 1. BULLETPROOF CORS (MUST BE FIRST)
-app.use(cors({
-    origin: true,
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-}));
+// Middleware
+const allowedOrigins = [
+    process.env.FRONTEND_URL || 'http://localhost:5173',
+    'http://localhost:3000' // Legacy/fallback
+];
 
-// 2. PARSERS
+app.use(cors({
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.indexOf(origin) === -1) {
+            const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+            return callback(new Error(msg), false);
+        }
+        return callback(null, true);
+    },
+    credentials: true
+}));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// 3. SAFE LOGGING
-app.use((req, res, next) => {
-    console.log(`📡 [${new Date().toISOString()}] ${req.method} ${req.url}`);
-    next();
-});
 
-// 4. HEALTH CHECKS
-app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'UP', message: 'API is running' });
-});
-
-app.get('/', (req, res) => {
-    res.send('Quotation System API is Online');
-});
-
-// 5. ROUTES
+// Main API Route
 app.use('/api', apiRouter);
-
-// 6. GLOBAL ERROR HANDLER (PREVENTS 500 CRASHES)
-app.use((err, req, res, next) => {
-    console.error('💥 SERVER ERROR:', err);
-    res.status(err.status || 500).json({
-        error: true,
-        message: err.message || 'Server Error'
-    });
+app.post('/api/test', (req, res) => {
+    res.json({ message: "API is working!" });
 });
 
-const PORT = process.env.PORT || 8080;
-
+// 1. Test Database Connection
 sequelize.authenticate()
     .then(() => {
-        console.log('✅ Database Connected');
-        return sequelize.sync({ alter: true });
-    })
-    .then(() => {
-        console.log('✅ Tables Synced');
-        app.listen(PORT, () => {
-            console.log(`🚀 Server listening on port ${PORT}`);
-        });
+        console.log('✅ Connection to pgAdmin (PostgreSQL) has been established successfully.');
     })
     .catch(err => {
-        console.error('❌ Database Initialization Failed:', err.message);
-        // Start server anyway to provide error feedback
-        app.listen(PORT, () => {
-            console.log(`🚀 Server listening on port ${PORT} (DB ERROR MODE)`);
-        });
+        console.error('❌ Unable to connect to the database:', err);
     });
 
-export default app;
+// 2. Health Check Route
+app.get('/', (req, res) => {
+    res.send('Quotations System Server is Running & Connected to DB!');
+});
+
+// 3. Database Sync
+sequelize.sync({ alter: true })
+    .then(() => console.log('✅ Database Tables Synced'))
+    .catch(err => console.log('❌ Sync Error: ' + err));
+
+// Start the Server
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+    console.log(`==========================================`);
+    console.log(`   QUOTATIONS SYSTEM STARTING...          `);
+    console.log(`   SERVER RUNNING ON PORT: ${PORT}        `);
+    console.log(`==========================================`);
+});

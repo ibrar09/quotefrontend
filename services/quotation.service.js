@@ -53,11 +53,11 @@ export const createQuotation = async (data) => {
     work_description,
     discount,
     quote_status: data.quote_status || 'DRAFT',
-    brand: store ? store.brand : (data.brand || ''),
-    brand_name: store ? store.brand : (data.brand || ''),
-    location: store ? store.mall : (data.location || ''),
-    city: store ? store.city : (data.city || ''),
-    region: store ? store.region : (data.region || ''),
+    brand: store?.brand || data.brand || '',
+    brand_name: store?.brand || data.brand_name || '',
+    location: store?.mall || data.location || '',
+    city: store?.city || data.city || '',
+    region: store?.region || data.region || '',
     store_opening_date,
     continuous_assessment
   });

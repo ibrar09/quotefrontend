@@ -2,6 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import csv from 'csv-parser';
 import stream from 'stream';
+import moment from 'moment';
 import db from '../models/index.js';
 
 const router = express.Router();
@@ -10,14 +11,44 @@ const { Store, PriceList, sequelize } = db;
 
 // Helper to clean price strings (e.g., "$1,200.50" -> 1200.50)
 const parsePrice = (val) => {
-    if (!val) return 0;
+    if (!val || val === '#N/A') return 0;
     const cleaned = String(val).replace(/[^0-9.-]+/g, "");
     return parseFloat(cleaned) || 0;
 };
 
+const parseDate = (val) => {
+    if (!val || val === '#N/A' || String(val).trim() === '') return null;
+    const m = moment(val, ['MM/DD/YYYY', 'M/D/YYYY', 'DD-MMM-YYYY', 'YYYY-MM-DD'], true);
+    return m.isValid() ? m.format('YYYY-MM-DD') : null;
+};
+
+// --- UNIVERSAL HEADER MAPPER ---
+const cleanHeader = (h) => String(h || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+
+const matchHeader = (headers, aliases) => {
+    const cleanedHeaders = headers.map(cleanHeader);
+    for (const alias of aliases) {
+        const cleanedAlias = cleanHeader(alias);
+        const idx = cleanedHeaders.indexOf(cleanedAlias);
+        if (idx !== -1) return idx;
+    }
+    // Partial Match Fallback
+    for (const alias of aliases) {
+        const cleanedAlias = cleanHeader(alias);
+        const idx = cleanedHeaders.findIndex(h => h.includes(cleanedAlias) || cleanedAlias.includes(h));
+        if (idx !== -1 && cleanedHeaders[idx].length > 2) return idx;
+    }
+    return -1;
+};
+
+const getRowValue = (row, headers, aliases) => {
+    const idx = matchHeader(headers, aliases);
+    return idx !== -1 ? row[idx] : null;
+};
+
+
 // 1. UPLOAD MASTER STORES
 router.post('/upload-stores', upload.single('file'), async (req, res) => {
-    console.log('🚀 [STORES] Upload request received');
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
     const results = [];
@@ -25,61 +56,81 @@ router.post('/upload-stores', upload.single('file'), async (req, res) => {
     bufferStream.end(req.file.buffer);
 
     bufferStream
-        .pipe(csv())
-        .on('error', (err) => {
-            console.error('❌ [STORES] CSV Parsing Error:', err);
-            res.status(400).json({ error: 'Failed to parse CSV file.' });
-        })
-        .on('data', (data) => results.push(data))
+        .pipe(csv({
+            headers: false
+        }))
+        .on('data', (data) => results.push(Object.values(data)))
         .on('end', async () => {
-            console.log(`📊 [STORES] Received CSV: ${results.length} rows.`);
+            console.log(`Parsed ${results.length} raw rows from CSV (Stores).`);
+
             try {
-                if (results.length === 0) {
-                    return res.status(400).json({ error: 'CSV file is empty.' });
+                // Find the header row
+                let headerIndex = -1;
+                for (let i = 0; i < Math.min(results.length, 20); i++) {
+                    const row = results[i].map(v => String(v).toLowerCase());
+                    if (row.includes('oracle ccid') || row.includes('ccid') || (row.includes('region') && row.includes('city'))) {
+                        headerIndex = i;
+                        break;
+                    }
                 }
 
-                // Log headers and first row for debugging
-                const safeHeaders = results.length > 0 ? Object.keys(results[0]) : [];
-                console.log(`🔍 [STORES] CSV Headers Found: ${safeHeaders.join(', ')}`);
-                if (results.length > 0) {
-                    console.log('🔍 [STORES] First Row Sample:', JSON.stringify(results[0], null, 2));
+                if (headerIndex === -1 && results.length > 0) {
+                    console.log('Sample rows for debugging:', results.slice(0, 5));
+                    return res.status(400).json({ error: 'Could not find header row (CCID, Region) in CSV' });
                 }
 
-                const formatted = results.map(row => ({
-                    oracle_ccid: row.oracle_ccid || row.CCID || row['Store CCID'] || row.ccid,
-                    region: row.region || row.Region,
-                    city: row.city || row.City,
-                    mall: row.mall || row.Mall,
-                    division: row.division || row.Division,
-                    brand: row.brand || row.Brand,
-                    store_name: row.store_name || row['Store Name'] || row.Name,
-                    fm_supervisor: row.fm_supervisor || row.Supervisor || row['FM Supervisor'],
-                    fm_manager: row.fm_manager || row.Manager || row['FM Manager'],
-                    store_status: row.store_status || row.Status || 'ACTIVE'
-                })).filter(r => r.oracle_ccid);
+                if (results.length === 0) return res.json({ message: 'CSV is empty' });
 
-                console.log(`🧹 [STORES] Formatted ${formatted.length} valid rows out of ${results.length} total.`);
+                const headers = results[headerIndex].map(h => String(h).trim());
+                console.log('Detected Stores Headers:', headers);
 
-                if (formatted.length === 0) {
-                    return res.status(400).json({
-                        error: 'No valid rows found',
-                        details: 'Could not map "oracle_ccid". Check your CSV headers.',
-                        foundHeaders: safeHeaders
-                    });
-                }
-
+                const dataRows = results.slice(headerIndex + 1);
                 const transaction = await sequelize.transaction();
 
+                // Advanced Mapper Alias Dictionaries
+                const aliases = {
+                    oracle_ccid: ['oracle_ccid', 'ccid', 'store_ccid', 'oracle_id', 'id'],
+                    region: ['region', 'area', 'zone'],
+                    city: ['city', 'location', 'town'],
+                    mall: ['mall', 'site', 'centre', 'center', 'complex'],
+                    division: ['division', 'business_unit', 'bu', 'sector'],
+                    brand: ['brand', 'label', 'concept'],
+                    store_name: ['store_name', 'name', 'shop_name', 'branch'],
+                    fm_supervisor: ['fm_supervisor', 'supervisor', 'fs', 'fs_new', 'area_supervisor'],
+                    fm_manager: ['fm_manager', 'manager', 'fm', 'area_manager'],
+                    sqm: ['sqm', 'size', 'area', 'sqm_area', 'space'],
+                    store_status: ['store_status', 'status', 'state'],
+                    store_type: ['store_type', 'type', 'format'],
+                    opening_date: ['opening_date', 'open_date', 'opened']
+                };
+
+                const formatted = dataRows.map(row => ({
+                    oracle_ccid: getRowValue(row, headers, aliases.oracle_ccid),
+                    region: getRowValue(row, headers, aliases.region),
+                    city: getRowValue(row, headers, aliases.city),
+                    mall: getRowValue(row, headers, aliases.mall),
+                    division: getRowValue(row, headers, aliases.division),
+                    brand: getRowValue(row, headers, aliases.brand),
+                    store_name: getRowValue(row, headers, aliases.store_name),
+                    fm_supervisor: getRowValue(row, headers, aliases.fm_supervisor),
+                    fm_manager: getRowValue(row, headers, aliases.fm_manager),
+                    sqm: parsePrice(getRowValue(row, headers, aliases.sqm)),
+                    store_status: getRowValue(row, headers, aliases.store_status) || 'ACTIVE',
+                    store_type: getRowValue(row, headers, aliases.store_type),
+                    opening_date: parseDate(getRowValue(row, headers.map(h => h.replace('\n', ' ')), aliases.opening_date))
+                })).filter(r => r.oracle_ccid);
+
+                console.log(`Formatted ${formatted.length} stores for database insert.`);
+
                 await Store.bulkCreate(formatted, {
-                    updateOnDuplicate: ['region', 'city', 'mall', 'division', 'brand', 'store_name', 'fm_supervisor', 'fm_manager', 'store_status'],
+                    updateOnDuplicate: ['region', 'city', 'mall', 'division', 'brand', 'store_name', 'fm_supervisor', 'fm_manager', 'sqm', 'store_status', 'store_type', 'opening_date'],
                     transaction
                 });
 
                 await transaction.commit();
-                console.log('✅ [STORES] Database transaction committed');
-                res.json({ message: `Successfully synced ${formatted.length} stores.`, count: formatted.length });
+                res.json({ message: `Successfully synced ${formatted.length} stores.` });
             } catch (error) {
-                console.error('❌ [STORES] CSV Sync Error:', error);
+                console.error('CSV Sync Error:', error);
                 res.status(500).json({ error: 'Sync failed: ' + error.message });
             }
         });
@@ -87,7 +138,6 @@ router.post('/upload-stores', upload.single('file'), async (req, res) => {
 
 // 2. UPLOAD PRICE LIST
 router.post('/upload-pricelist', upload.single('file'), async (req, res) => {
-    console.log('🚀 [PRICELIST] Upload request received');
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
 
     const results = [];
@@ -95,60 +145,98 @@ router.post('/upload-pricelist', upload.single('file'), async (req, res) => {
     bufferStream.end(req.file.buffer);
 
     bufferStream
-        .pipe(csv())
-        .on('error', (err) => {
-            console.error('❌ [PRICELIST] CSV Parsing Error:', err);
-            res.status(400).json({ error: 'Failed to parse CSV file.' });
-        })
-        .on('data', (data) => results.push(data))
+        .pipe(csv({
+            headers: false // Read raw rows to find the actual header row
+        }))
+        .on('data', (data) => results.push(Object.values(data)))
         .on('end', async () => {
-            console.log(`📊 [PRICELIST] Received CSV: ${results.length} rows.`);
+            console.log(`Parsed ${results.length} raw rows from CSV (PriceList).`);
+
             try {
-                if (results.length === 0) {
-                    return res.status(400).json({ error: 'CSV file is empty.' });
+                const aliases = {
+                    code: ['code', 'item_code', 'part_number', 'sku', 'id', 'item_id', 'service_code'],
+                    type: ['type', 'category', 'group', 'class', 'item_type', 'service_type'],
+                    description: ['description', 'decription', 'details', 'item_description', 'specification', 'item_name', 'item', 'name', 'work_description', 'task_description', 'scope_of_work', 'service_description'],
+                    unit: ['unit', 'uom', 'measure', 'qty_unit'],
+                    material_price: ['material_price', 'material', 'materials', 'mat_price', 'supply', 'unit_price', 'rate'],
+                    labor_price: ['labor_price', 'labor', 'labour', 'lab_price', 'installation', 'fitting'],
+                    total_price: ['total_price', 'total', 'grand_total', 'total_amount', 'sum'],
+                    remarks: ['remarks', 'remark', 'note', 'notes'],
+                    comments: ['comments', 'comment', 'internal_notes']
+                };
+
+                // Find the header row (using our smart alias matching)
+                let headerIndex = -1;
+                for (let i = 0; i < Math.min(results.length, 25); i++) {
+                    const row = results[i].map(v => cleanHeader(v));
+                    const hasCode = aliases.code.some(a => row.includes(cleanHeader(a)));
+                    const hasDesc = aliases.description.some(a => row.includes(cleanHeader(a)));
+
+                    if (hasCode && hasDesc) {
+                        headerIndex = i;
+                        console.log(`Smart Header Match found at row ${i}:`, results[i]);
+                        break;
+                    }
                 }
 
-                const safeHeaders = results.length > 0 ? Object.keys(results[0]) : [];
-                console.log(`🔍 [PRICELIST] CSV Headers Found: ${safeHeaders.join(', ')}`);
+                // Fallback: If no perfect match, just find 'Code' or something similar
+                if (headerIndex === -1) {
+                    for (let i = 0; i < Math.min(results.length, 10); i++) {
+                        const row = results[i].map(v => cleanHeader(v));
+                        if (aliases.code.some(a => row.includes(cleanHeader(a)))) {
+                            headerIndex = i;
+                            console.log(`Fallback Header Match (Code Only) at row ${i}:`, results[i]);
+                            break;
+                        }
+                    }
+                }
 
+                if (headerIndex === -1) {
+                    return res.status(400).json({ error: 'Could not find header row (Item Code, Description) in CSV. Please ensure your columns are named correctly.' });
+                }
+
+                const headers = results[headerIndex].map(h => String(h).trim());
+                console.log('Detected PriceList Headers:', headers);
+
+                const dataRows = results.slice(headerIndex + 1);
                 const transaction = await sequelize.transaction();
 
-                const formatted = results.map(row => {
-                    const matPrice = parsePrice(row.material_price || row.Material || row['Material Price']);
-                    const labPrice = parsePrice(row.labor_price || row.Labor || row['Labor Price']);
-                    const total = parsePrice(row.total_price || row.Total || row['Total Price']) || (matPrice + labPrice);
+
+                const formatted = dataRows.map(row => {
+                    const matPrice = parsePrice(getRowValue(row, headers, aliases.material_price));
+                    const labPrice = parsePrice(getRowValue(row, headers, aliases.labor_price));
+                    const total = parsePrice(getRowValue(row, headers, aliases.total_price)) || (matPrice + labPrice);
+
                     return {
-                        code: row.code || row.Code || row['Item Code'],
-                        description: row.description || row.Description || row.Item,
-                        unit: row.unit || row.Unit || row.UOM,
+                        code: getRowValue(row, headers, aliases.code),
+                        type: getRowValue(row, headers, aliases.type),
+                        description: getRowValue(row, headers, aliases.description),
+                        unit: getRowValue(row, headers, aliases.unit),
                         material_price: matPrice,
                         labor_price: labPrice,
                         total_price: total,
-                        remarks: row.remarks || row.Remarks
+                        remarks: getRowValue(row, headers, aliases.remarks),
+                        comments: getRowValue(row, headers, aliases.comments)
                     };
                 }).filter(r => r.code);
 
-                console.log(`🧹 [PRICELIST] Formatted ${formatted.length} valid rows out of ${results.length} total.`);
-
-                if (formatted.length === 0) {
-                    await transaction.rollback();
-                    return res.status(400).json({
-                        error: 'No valid rows found',
-                        details: 'Could not map "code". Check your CSV headers.',
-                        foundHeaders: safeHeaders
+                console.log(`Formatted ${formatted.length} PriceList items for database insert.`);
+                if (formatted.length > 0) {
+                    console.log('Mapping Sample (Row 1):', {
+                        original: dataRows[0],
+                        formatted: formatted[0]
                     });
                 }
 
                 await PriceList.bulkCreate(formatted, {
-                    updateOnDuplicate: ['description', 'unit', 'material_price', 'labor_price', 'total_price', 'remarks'],
+                    updateOnDuplicate: ['type', 'description', 'unit', 'material_price', 'labor_price', 'total_price', 'remarks', 'comments'],
                     transaction
                 });
 
                 await transaction.commit();
-                console.log('✅ [PRICELIST] Database transaction committed');
                 res.json({ message: `Successfully synced ${formatted.length} price items.`, count: formatted.length });
             } catch (error) {
-                console.error('❌ [PRICELIST] Price List Sync Error:', error);
+                console.error('Price List Sync Error:', error);
                 res.status(500).json({ error: 'Sync failed: ' + error.message });
             }
         });

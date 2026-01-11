@@ -17,7 +17,7 @@ const Finance = sequelize.define('Finance', {
   },
   invoice_date: { type: DataTypes.DATEONLY },
   invoice_status: {
-    type: DataTypes.ENUM('NOT_SUBMITTED', 'SUBMITTED', 'PAID', 'PARTIAL', 'UNPAID', 'PENDING', 'CANCELLED'),
+    type: DataTypes.ENUM('NOT_SUBMITTED', 'SUBMITTED', 'PAID', 'PARTIAL', 'UNPAID', 'PENDING', 'CANCELLED', 'EW'),
     defaultValue: 'NOT_SUBMITTED'
   },
 

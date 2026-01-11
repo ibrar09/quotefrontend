@@ -1,5 +1,38 @@
 import puppeteer from 'puppeteer';
 import fs from 'fs';
+import { v4 as uuidv4 } from 'uuid';
+
+// In-memory store for temporary previews (lasts until server restart)
+const previewStore = new Map();
+
+export const preparePreview = async (req, res) => {
+    try {
+        const previewId = uuidv4();
+        previewStore.set(previewId, {
+            data: req.body,
+            createdAt: new Date()
+        });
+
+        // Cleanup old previews (older than 1 hour)
+        const ONE_HOUR = 60 * 60 * 1000;
+        for (const [id, entry] of previewStore.entries()) {
+            if (new Date() - entry.createdAt > ONE_HOUR) {
+                previewStore.delete(id);
+            }
+        }
+
+        res.json({ success: true, previewId });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export const getPreviewData = async (req, res) => {
+    const { id } = req.params;
+    const entry = previewStore.get(id);
+    if (!entry) return res.status(404).json({ success: false, message: 'Preview expired or not found' });
+    res.json({ success: true, data: entry.data });
+};
 
 export const generatePdf = async (req, res) => {
     try {
@@ -11,56 +44,54 @@ export const generatePdf = async (req, res) => {
 
         console.log(`Generating PDF for URL: ${url}`);
 
+        // Launch browser with more robust args for container environments
         const browser = await puppeteer.launch({
             headless: 'new',
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage', // Critical for Docker/Railway
+                '--disable-gpu'
+            ]
         });
         const page = await browser.newPage();
 
-        // 🔹 Debug: Capture Puppeteer console and errors to file
-        const logStream = fs.createWriteStream('debug_pdf.txt', { flags: 'a' });
-        logStream.write(`\n--- NEW PDF REQUEST: ${new Date().toISOString()} ---\n`);
-        logStream.write(`URL: ${url}\n`);
-
-        page.on('console', msg => logStream.write(`PUPPETEER CONSOLE: ${msg.text()}\n`));
-        page.on('pageerror', error => logStream.write(`PUPPETEER PAGE ERROR: ${error.message}\n`));
-        page.on('requestfailed', request => logStream.write(`PUPPETEER REQ FAILED: ${request.url()} - ${request.failure()?.errorText}\n`));
+        // 🔹 Debug: Log directly to console so we can see it in Railway/Vercel logs
+        page.on('console', msg => console.log(`[PUPPETEER VM] ${msg.text()}`));
+        page.on('pageerror', error => console.error(`[PUPPETEER VM ERROR] ${error.message}`));
+        page.on('requestfailed', request => console.error(`[PUPPETEER REQ FAIL] ${request.url()} - ${request.failure()?.errorText}`));
 
         // Emulate screen media to ensure WYSIWYG
         await page.emulateMediaType('screen');
-
-        // Set viewport to A4 dimensions (approx) to trigger correct media queries if any
-        await page.setViewport({ width: 794, height: 1123, deviceScaleFactor: 2 }); // High DPI for crisp text
+        await page.setViewport({ width: 794, height: 1123, deviceScaleFactor: 2 });
 
         // Navigate to the URL
+        console.log(`[PDF] Navigating to ${url}...`);
         await page.goto(url, {
             waitUntil: ['networkidle2', 'domcontentloaded'],
-            timeout: 60000
+            timeout: 60000 // 60s timeout
         });
 
         // Wait for React to finish rendering
         try {
-            await page.waitForSelector('#pdf-ready', { timeout: 10000 });
-            // 🔹 Small extra buffer to allow CSS/Images to settle
+            console.log('[PDF] Waiting for selector #pdf-ready...');
+            await page.waitForSelector('#pdf-ready', { timeout: 15000 });
+            // Small extra buffer
             await new Promise(r => setTimeout(r, 1000));
         } catch (e) {
-            logStream.write(`Detailed rendering error: Timeout waiting for #pdf-ready\n`);
+            console.error(`[PDF] Timeout waiting for #pdf-ready selector. Proceeding anyway, but PDF might be incomplete.`);
         }
 
         // Generate PDF
         const pdfBuffer = await page.pdf({
             format: 'A4',
             printBackground: true,
-            margin: {
-                top: '0px',
-                bottom: '0px',
-                left: '0px',
-                right: '0px'
-            },
+            margin: { top: '0px', bottom: '0px', left: '0px', right: '0px' },
             preferCSSPageSize: true
         });
 
         await browser.close();
+        console.log('[PDF] Generated successfully.');
 
         res.set({
             'Content-Type': 'application/pdf',
@@ -70,7 +101,10 @@ export const generatePdf = async (req, res) => {
         res.send(pdfBuffer);
 
     } catch (error) {
-        console.error('PDF Generation Error:', error);
-        res.status(500).send('Error generating PDF');
+        console.error('❌ PDF Generation Error:', error);
+        res.status(500).json({
+            error: 'Failed to generate PDF',
+            details: error.message
+        });
     }
 };

@@ -9,8 +9,8 @@ import sequelize from '../config/db.js'; // Add Sequelize instance here
 import JobImage from './jobImage.js';
 
 // Relations
-Store.hasMany(Job, { foreignKey: 'oracle_ccid' });
-Job.belongsTo(Store, { foreignKey: 'oracle_ccid' });
+Store.hasMany(Job, { foreignKey: 'oracle_ccid', constraints: false });
+Job.belongsTo(Store, { foreignKey: 'oracle_ccid', constraints: false });
 
 Job.hasMany(JobItem, { foreignKey: 'job_id' });
 JobItem.belongsTo(Job, { foreignKey: 'job_id' });
