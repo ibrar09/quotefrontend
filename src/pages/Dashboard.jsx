@@ -1,7 +1,7 @@
 // src/layouts/DashboardLayout.jsx
 import React, { useState } from "react";
 import Sidebar from "../components/Sidebar";
-import TopBar from "../components/TopBar";
+import TopBar from "../components/Topbar";
 import { Outlet, useLocation } from "react-router-dom";
 import { useTheme } from "../context/ThemeContext";
 
