@@ -19,11 +19,17 @@ app.use(cors({
     origin: function (origin, callback) {
         // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
-        if (allowedOrigins.indexOf(origin) === -1) {
-            const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-            return callback(new Error(msg), false);
+
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+        // If frontendUrl is '*', allow everyone
+        if (frontendUrl === '*' || allowedOrigins.includes(origin)) {
+            return callback(null, true);
         }
-        return callback(null, true);
+
+        const msg = 'The CORS policy for this site does not allow access from the specified Origin: ' + origin;
+        console.error(msg);
+        return callback(new Error(msg), false);
     },
     credentials: true
 }));
