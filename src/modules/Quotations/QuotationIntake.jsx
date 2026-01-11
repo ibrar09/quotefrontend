@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { FileText, ArrowRightCircle, Loader2 } from 'lucide-react';
+import { FileText, ArrowRightCircle, Loader2, Save } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import logoSrc from '../../assets/Maaj-Logo 04.png';
+import API_BASE_URL from '../../config/api';
 
 const QuotationIntake = () => {
     const navigate = useNavigate();
@@ -20,7 +21,44 @@ const QuotationIntake = () => {
             return;
         }
         // Navigate to the main quotation page and pass the data as state
-        navigate('/quotations/new-quotation', { state: data });
+        // Ensure keys match what NewQuotation expects
+        navigate('/quotations/new-quotation', {
+            state: {
+                mrNo: data.mrNo,
+                storeCcid: data.storeCcid,
+                mrDesc: data.mrDesc,
+                workDescription: data.mrDesc // Support both for safety
+            }
+        });
+    };
+
+    const handleSaveIntake = async () => {
+        if (!data.mrNo || !data.storeCcid) {
+            alert("Please enter MR Number and Store CCID");
+            return;
+        }
+        setLoading(true);
+        try {
+            await fetch(`${API_BASE_URL}/api/quotations`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    mr_no: data.mrNo,
+                    oracle_ccid: data.storeCcid,
+                    work_description: data.mrDesc,
+                    quote_no: `INTAKE-${Date.now().toString().slice(-6)}`, // Temp ID
+                    quote_status: 'INTAKE'
+                })
+            });
+            alert("✅ Saved to Intake Tracker successfully!");
+            // Optional: clear form or navigate to Dashboard
+            setData({ mrNo: '', storeCcid: '', mrDesc: '' });
+        } catch (error) {
+            console.error("Intake Save Error:", error);
+            alert("Failed to save intake.");
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -70,12 +108,23 @@ const QuotationIntake = () => {
                         ></textarea>
                     </div>
 
-                    <button
-                        onClick={handleNext}
-                        className={themeStyles.button + " w-full p-4 rounded-xl flex items-center justify-center gap-2 group shadow-lg text-[14px]"}
-                    >
-                        Create Quotation <ArrowRightCircle size={20} className="group-hover:translate-x-1 transition-transform" />
-                    </button>
+                    <div className="flex gap-3">
+                        <button
+                            onClick={handleSaveIntake}
+                            disabled={loading}
+                            className={`flex-1 p-3 rounded-xl flex items-center justify-center gap-2 font-bold text-[13px] border-2 transition-transform hover:scale-[1.02] ${darkMode ? 'bg-transparent border-[#00a8aa] text-[#00a8aa] hover:bg-[#00a8aa] hover:text-white' : 'bg-white border-black text-black hover:bg-black hover:text-white'}`}
+                        >
+                            {loading ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />} {/* Assuming 'Save' is imported */}
+                            Save to Tracker
+                        </button>
+
+                        <button
+                            onClick={handleNext}
+                            className={`flex-1 p-3 rounded-xl flex items-center justify-center gap-2 font-bold text-[13px] shadow-lg text-white transition-transform hover:scale-[1.02] ${darkMode ? 'bg-[#00a8aa]' : 'bg-black'}`}
+                        >
+                            Create Quote <ArrowRightCircle size={18} />
+                        </button>
+                    </div>
                 </div>
 
                 <div className={`p-4 border-t text-center grayscale opacity-60 ${darkMode ? 'bg-black/20 border-white/5' : 'bg-gray-50 border-gray-100'}`}>

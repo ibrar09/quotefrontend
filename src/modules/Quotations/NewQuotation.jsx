@@ -12,6 +12,7 @@ const NewQuotation = () => {
   const MAX_IMAGES = 9;
   const navigate = useNavigate();
   const location = useLocation();
+  const suggestionRef = useRef(null);
 
   const { darkMode, colors, themeStyles } = useTheme();
 
@@ -21,7 +22,7 @@ const NewQuotation = () => {
     brand: '',
     location: '',
     city: '',
-    quoteNo: `MAAJ-${Math.floor(1000 + Math.random() * 9000)}`,
+    quoteNo: `MAAJ - ${Math.floor(1000 + Math.random() * 9000)}`,
     mrNo: location.state?.mrNo || '',
     storeCcid: location.state?.storeCcid || '',
     version: '1.0',
@@ -45,8 +46,9 @@ const NewQuotation = () => {
   const [loadingStore, setLoadingStore] = useState(false);
   const [storeStatus, setStoreStatus] = useState(null);
   const [priceSuggestions, setPriceSuggestions] = useState([]);
-  const [activeRow, setActiveRow] = useState(null);
-  const [terms, setTerms] = useState(`1. Any Items / work needed to complete the job will be considered within the given total price if not mentioned in the below exclusion list.\n2. If completion of job exceeds the specified number of days, a deduction of 100 SR will be considered for every additional delayed day.\n3. Parts will be under warranty against manufacturer defects and quality.`);
+  const [activeRow, setActiveRow] = useState(null); // { index: number, field: 'code' | 'description' }
+  const [activeField, setActiveField] = useState(null);
+  const [terms, setTerms] = useState(`1. Any Items/work needed to complete the job will be considered within the given total price if not mentioned in the below exclusion list.\n2.If completion of job exceeds the specified number of days, a deduction of 100 SR will be considered for every additional delayed day.\n3.Parts will be under warranty against manufacturer defects and quality.`);
   const [exclusions, setExclusions] = useState(['', '', '']);
   const [completionDate, setCompletionDate] = useState("");
   const [warranty, setWarranty] = useState("");
@@ -148,24 +150,53 @@ const NewQuotation = () => {
     }
   }, [location.state]);
 
+  // --- Click Outside to close suggestions ---
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (suggestionRef.current && !suggestionRef.current.contains(event.target)) {
+        setPriceSuggestions([]);
+        setActiveRow(null);
+        setActiveField(null);
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setPriceSuggestions([]);
+        setActiveRow(null);
+        setActiveField(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
   // --- Price List Lookup (Smart Suggestions) ---
   const handleItemSearch = async (index, field, val) => {
     const newItems = [...items];
     newItems[index][field] = val;
     setItems(newItems);
 
-    if (val.length > 2) {
-      setActiveRow(index);
-      try {
-        const res = await axios.get(`${API_BASE_URL}/api/pricelist/search?q=${val}`);
-        setPriceSuggestions(res.data.data || []);
-      } catch (err) {
-        console.error("Error fetching prices:", err);
-      }
-    } else {
-      setPriceSuggestions([]);
-      setActiveRow(null);
+    setActiveRow(index);
+    setActiveField(field);
+
+    console.log(`[SUGGEST] Searching for: "${val}" in field: ${field}`);
+    try {
+      const res = await axios.get(`${API_BASE_URL}/api/pricelist/search?q=${val || ''}`);
+      console.log(`[SUGGEST] Found ${res.data.data?.length || 0} items`);
+      setPriceSuggestions(res.data.data || []);
+    } catch (err) {
+      console.error("Error fetching prices:", err);
     }
+  };
+
+  const handleFocus = (index, field, val) => {
+    handleItemSearch(index, field, val || '');
   };
 
   const selectSuggestion = (index, item) => {
@@ -184,6 +215,7 @@ const NewQuotation = () => {
     setItems(newItems);
     setPriceSuggestions([]);
     setActiveRow(null);
+    setActiveField(null);
   };
 
   // --- Calculations ---
@@ -321,43 +353,70 @@ const NewQuotation = () => {
   // --- PDF Download Function ---
   // --- PDF Download Function ---
   // --- PDF Download Function ---
+  // --- PDF Download Function ---
   const handleDownloadPDF = async () => {
     let quoteId = location.state?.id || header.id;
 
-    // If not saved yet, autosave as PREVIEW so we can generate PDF via proper route
-    // This allows downloading without cluttering the main list ("Draft").
+    // 1. If not saved yet, we use the PREVIEW API (no database save)
     if (!quoteId) {
       try {
-        // Save as 'PREVIEW' (Hidden status)
-        const savedData = await handleSave('PREVIEW');
-        if (savedData) {
-          quoteId = savedData.id;
-          // Update header with new ID/Seq so subsequent saves work, 
-          // but KEEP it as "unsaved" in user's mind if possible, or just treat as now tracked.
-          // Actually, if we setHeader with new data, it becomes "edit mode".
-          // That's acceptable. The user just sees the PDF.
-          setHeader(prev => ({ ...prev, id: savedData.id, quoteNo: savedData.quote_no }));
+        setLoadingStore(true);
+        const payload = {
+          quote_no: header.quoteNo,
+          mr_no: header.mrNo,
+          mr_date: header.mrRecDate || null,
+          oracle_ccid: header.storeCcid,
+          work_description: header.mrDesc || header.description,
+          brand: header.brand,
+          city: header.city,
+          location: header.location,
+          region: header.region,
+          store_opening_date: header.openingDate || null,
+          items: items.filter(i => i.code || i.description).map(item => ({
+            item_code: item.code,
+            description: item.description,
+            unit: item.unit,
+            quantity: Number(item.qty) || 0,
+            material_price: Number(item.material) || 0,
+            labor_price: Number(item.labor) || 0,
+            unit_price: (Number(item.material) || 0) + (Number(item.labor) || 0),
+          })),
+          images: images.filter(img => img !== null)
+        };
+
+        const previewRes = await axios.post(`${API_BASE_URL}/api/pdf/preview-prepare`, payload);
+        if (previewRes.data.success) {
+          quoteId = `preview-${previewRes.data.previewId}`;
         } else {
-          return; // Save failed (validation etc)
+          setLoadingStore(false);
+          alert("Failed to prepare preview.");
+          return;
         }
       } catch (error) {
-        console.error("Preview save failed during PDF generation:", error);
-        alert(`Failed to save for PDF preview: ${error.message || 'Unknown error'}`);
+        console.error("Preview preparation failed:", error);
+        alert("Failed to prepare PDF preview.");
+        setLoadingStore(false);
         return;
+      } finally {
+        setLoadingStore(false);
       }
     }
 
+    // 2. Generate PDF using the ID
     try {
-      const pdfUrl = `${window.location.origin}/quotations/print-view/${quoteId}`;
+      // The frontend route that displays the print view
+      const pdfUrl = `${window.location.origin} /quotations/print-view/${quoteId}`;
+      console.log("Requesting PDF for:", pdfUrl);
 
       const res = await axios.post(`${API_BASE_URL}/api/pdf/generate`, { url: pdfUrl }, {
         responseType: 'blob'
       });
 
+      // 3. Trigger Download
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `Quotation-${header.quoteNo}.pdf`);
+      link.setAttribute('download', `Quotation - ${header.quoteNo}.pdf`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -365,30 +424,41 @@ const NewQuotation = () => {
     } catch (err) {
       console.error("PDF Download Error:", err);
       const errorMsg = err.response?.data?.message || err.message || 'Failed to download PDF.';
-      alert(`PDF Download Error: ${errorMsg}`);
+      // Helper: If backend sends JSON error in Blob, try to read it
+      if (err.response?.data instanceof Blob) {
+        const text = await err.response.data.text();
+        try {
+          const json = JSON.parse(text);
+          alert(`PDF Error: ${json.details || json.error || text}`);
+        } catch (e) {
+          alert(`PDF Error: ${errorMsg}`);
+        }
+      } else {
+        alert(`PDF Download Error: ${errorMsg}`);
+      }
     }
   };
 
   return (
     <div className={`min-h-screen md:py-8 py-2 overflow-x-hidden transition-colors duration-500 ${themeStyles.container}`} style={{ fontFamily: "'Outfit', sans-serif" }}>
-      {/* Google Fonts - Outfit */}
+      {/* Google Fonts-Outfit */}
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="true" />
       <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
 
-      {/* Document Wrapper - This forces visibility regardless of theme */}
+      {/* Document Wrapper-This forces visibility regardless of theme */}
       <div
         id="quotation-content"
         className="max-w-[850px] mx-auto bg-white md:p-[40px] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.15)] border border-gray-100 flex flex-col min-h-[1100px] gap-2 print:shadow-none print:p-0 print:border-none relative text-black"
         style={{ color: 'black' }}
       >
 
-        {/* Top Header Section - Logo on Right */}
+        {/* Top Header Section-Logo on Right */}
         <div className="flex justify-end items-center border-b-2 border-black pb-4">
           <img src={logoSrc} alt="MAAJ Logo" className="h-14 object-contain" />
         </div>
 
-        {/* New Quotation Banner Section - Using standard yellow */}
+        {/* New Quotation Banner Section-Using standard yellow */}
         <div className="bg-[#e2d1a5] border-2 border-black py-1 text-center" style={{ backgroundColor: '#e2d1a5' }}>
           <h1 className="text-xl font-bold tracking-[0.4em] text-black uppercase">
             QUOTATION
@@ -618,9 +688,9 @@ const NewQuotation = () => {
 
 
 
-        {/* Items Table */}
-        <div className="relative z-20">
-          <div className="overflow-x-auto">
+        {/* Items Table-Using relative and overflow-visible for suggestions */}
+        <div className="relative z-30">
+          <div className="overflow-visible">
             <table className="w-full border-collapse border border-black text-[10px]">
               <thead>
                 <tr className="bg-gray-100 font-bold uppercase text-[9px]">
@@ -642,9 +712,31 @@ const NewQuotation = () => {
                         className="w-full outline-none text-center bg-transparent no-print"
                         value={item.code}
                         onChange={(e) => handleItemSearch(index, 'code', e.target.value)}
-                        onFocus={() => setActiveRow(index)}
+                        onFocus={(e) => handleFocus(index, 'code', e.target.value)}
                       />
                       <span className="print-only text-center block">{item.code}</span>
+
+                      {activeRow === index && activeField === 'code' && priceSuggestions.length > 0 && (
+                        <div
+                          ref={suggestionRef}
+                          className="absolute left-0 right-[-200px] mt-1 bg-white border border-black shadow-2xl z-50 max-h-60 overflow-y-auto no-print"
+                        >
+                          {priceSuggestions.map((s, i) => (
+                            <div
+                              key={i}
+                              className="p-2 hover:bg-yellow-50 cursor-pointer border-b border-gray-100 last:border-none"
+                              onClick={() => selectSuggestion(index, s)}
+                            >
+                              <div className="flex justify-between items-start gap-2">
+                                <span className="font-bold text-[10px] text-cyan-600 shrink-0">{s.code}</span>
+                                <span className="px-1.5 py-0.5 rounded-md text-[8px] font-bold bg-blue-50 text-blue-500 uppercase">{s.type || 'Standard'}</span>
+                                <span className="text-right text-[9px] font-bold text-gray-500 ml-auto">{Number(s.material_price) + Number(s.labor_price)} SAR</span>
+                              </div>
+                              <div className="text-[9px] text-gray-700 leading-tight mt-1 truncate">{s.description}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </td>
                     <td className="border border-black p-2 relative">
                       <textarea
@@ -662,9 +754,31 @@ const NewQuotation = () => {
                           }
                         }}
                         onChange={(e) => handleItemSearch(index, 'description', e.target.value)}
-                        onFocus={() => setActiveRow(index)}
+                        onFocus={(e) => handleFocus(index, 'description', e.target.value)}
                       />
                       <div className="print-only min-h-[40px] text-black font-semibold whitespace-pre-wrap">{item.description}</div>
+
+                      {activeRow === index && activeField === 'description' && priceSuggestions.length > 0 && (
+                        <div
+                          ref={suggestionRef}
+                          className="absolute left-0 right-[-300px] mt-1 bg-white border border-black shadow-2xl z-50 max-h-60 overflow-y-auto no-print"
+                        >
+                          {priceSuggestions.map((s, i) => (
+                            <div
+                              key={i}
+                              className="p-2 hover:bg-yellow-50 cursor-pointer border-b border-gray-100 last:border-none"
+                              onClick={() => selectSuggestion(index, s)}
+                            >
+                              <div className="flex justify-between items-start gap-2">
+                                <span className="font-bold text-[10px] text-cyan-600 shrink-0">{s.code}</span>
+                                <span className="px-1.5 py-0.5 rounded-md text-[8px] font-bold bg-blue-50 text-blue-500 uppercase">{s.type || 'Standard'}</span>
+                                <span className="text-right text-[9px] font-bold text-gray-500 ml-auto">{Number(s.material_price) + Number(s.labor_price)} SAR</span>
+                              </div>
+                              <div className="text-[9px] text-gray-700 leading-tight mt-1 truncate">{s.description}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </td>
                     <td className="border border-black p-2">
                       <input
@@ -735,24 +849,7 @@ const NewQuotation = () => {
             </table>
           </div>
 
-          {/* Suggestions Box at the Bottom */}
-          {activeRow !== null && priceSuggestions.length > 0 && (
-            <div className="absolute left-0 right-0 mt-2 w-full max-w-full bg-white border border-black shadow-2xl z-50 max-h-60 overflow-y-auto no-print">
-              {priceSuggestions.map((s, i) => (
-                <div
-                  key={i}
-                  className="p-2 hover:bg-yellow-50 cursor-pointer border-b border-gray-100 last:border-none"
-                  onClick={() => selectSuggestion(activeRow, s)}
-                >
-                  <div className="flex justify-between items-start gap-2">
-                    <span className="font-bold text-[10px] text-cyan-600 shrink-0">{s.code}</span>
-                    <span className="text-right text-[9px] font-bold text-gray-500">{Number(s.material_price) + Number(s.labor_price)} SAR</span>
-                  </div>
-                  <div className="text-[9px] text-gray-700 leading-tight mt-1">{s.description}</div>
-                </div>
-              ))}
-            </div>
-          )}
+          {/* Suggestions placeholder removed from global bottom */}
 
           <button
             onClick={addRow}
@@ -772,12 +869,11 @@ const NewQuotation = () => {
             onDragOver={handleDragOver}
           >
             <div
-              className={`w-full gap-2 p-1 min-h-[150px] flex flex-col ${images.length === 0 ? 'bg-gray-50' : 'bg-white'}`}
+              className={`w-full gap-2 p-1 min-h - [150px] flex flex-col ${images.length === 0 ? 'bg-gray-50' : 'bg-white'}`}
             >
               <div className={`grid w-full h-full gap-1 ${(images.length + (images.length < 9 ? 1 : 0)) === 1 ? 'grid-cols-1 grid-rows-1' :
                 (images.length + (images.length < 9 ? 1 : 0)) === 2 ? 'grid-cols-2 grid-rows-1' :
-                  'grid-cols-2 md:grid-cols-3'
-                }`}>
+                  'grid-cols-2 md:grid-cols-3'}`}>
                 {images.map((imgData, i) => (
                   <div key={i} className="w-full h-full relative group border border-gray-300">
                     <img src={imgData} alt={`Evidence ${i + 1}`} className="w-full h-full object-cover" />
@@ -996,7 +1092,7 @@ const NewQuotation = () => {
             onClick={() => window.print()}
             className="flex-1 bg-black text-white font-bold uppercase text-xs py-3 hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
           >
-            <Printer size={16} /> Print / Save
+            <Printer size={16} /> Print/Save
           </button>
         </div>
 
@@ -1041,7 +1137,7 @@ const NewQuotation = () => {
       <div className="fixed bottom-6 right-6 flex flex-col gap-3 print:hidden z-50">
         <button
           onClick={() => window.print()}
-          className={`${darkMode ? 'bg-white text-black' : 'bg-black text-white'} p-4 rounded-full shadow-2xl hover:scale-110 transition-transform active:scale-95`}
+          className={`${darkMode ? 'bg-white text-black' : 'bg-black text-white'} p-4 rounded-full shadow-2xl hover: scale-110 transition-transform active: scale-95`}
           title="Print Document"
         >
           <Printer size={24} />
@@ -1056,36 +1152,36 @@ const NewQuotation = () => {
       </div>
 
       <style>{`
-        @media print {
-          .no-print { display: none !important; }
-          .print\\:hidden { display: none !important; }
-          .print-only { display: block !important; }
-          body { background: white !important; margin: 0; padding: 0; font-family: 'Outfit', sans-serif !important; }
-          #quotation-content { border: none !important; shadow: none !important; margin: 0 !important; width: 100% !important; max-width: none !important; }
-          .shadow-2xl, .shadow-lg, .shadow-sm { box-shadow: none !important; }
-          .border-gray-200, .border-gray-100 { border: none !important; }
-          .min-h-screen { min-height: 0 !important; height: auto !important; }
-          .gap-1, .gap-2, .gap-4, .md\\:gap-4 { gap: 0 !important; }
-          .md\\:p-\\[40px\\], .p-4 { padding: 0 !important; }
-          .md\\:py-8, .py-2 { padding-top: 0 !important; padding-bottom: 0 !important; }
-          .mt-2, .mt-4, .mt-8, .mt-auto { margin-top: 0.25rem !important; }
-          input, textarea, button { border: none !important; outline: none !important; appearance: none !important; }
-          .bg-gray-200 { background-color: #f3f4f6 !important; -webkit-print-color-adjust: exact; }
-          .bg-\\[\\#e2d1a5\\] { background-color: #e2d1a5 !important; -webkit-print-color-adjust: exact; }
-        }
-        @media screen {
-          .print-only { display: none !important; }
-        }
-        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button {
-          -webkit-appearance: none; margin: 0;
-        }
-        input[type="number"] {
-          -moz-appearance: textfield;
-        }
+@media print {
+          .no-print { display: none!important; }
+          .print\\:hidden { display: none!important; }
+          .print-only { display: block!important; }
+          body { background: white!important; margin: 0; padding: 0; font-family: 'Outfit', sans-serif!important; }
+  #quotation-content { border: none!important; shadow: none!important; margin: 0!important; width: 100 % !important; max-width: none!important; }
+          .shadow-2xl, .shadow-lg, .shadow-sm { box-shadow: none!important; }
+          .border-gray-200, .border-gray-100 { border: none!important; }
+          .min-h-screen { min-height: 0!important; height: auto!important; }
+          .gap-1, .gap-2, .gap-4, .md\\: gap-4 { gap: 0!important; }
+          .md\\: p -\\[40px\\], .p-4 { padding: 0!important; }
+          .md\\: py-8, .py-2 { padding-top: 0!important; padding-bottom: 0!important; }
+          .mt-2, .mt-4, .mt-8, .mt-auto { margin-top: 0.25rem!important; }
+  input, textarea, button { border: none!important; outline: none!important; appearance: none!important; }
+          .bg-gray-200 { background-color: #f3f4f6!important; -webkit-print-color-adjust: exact; }
+          .bg -\\[\\#e2d1a5\\] { background-color: #e2d1a5!important; -webkit-print-color-adjust: exact; }
+}
+@media screen {
+          .print-only { display: none!important; }
+}
+input:: -webkit-outer-spin-button, input:: -webkit-inner-spin-button {
+  -webkit-appearance: none; margin: 0;
+}
+input[type = "number"] {
+  -moz-appearance: textfield;
+}
         .aspect-video {
-          aspect-ratio: 4/3 !important;
-        }
-      `}</style>
+  aspect-ratio: 4/3!important;
+}
+`}</style>
     </div>
   );
 };
