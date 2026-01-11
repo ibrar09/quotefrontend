@@ -18,7 +18,9 @@ const DataSync = () => {
         formData.append('file', file);
 
         try {
-            const endpoint = `${API_BASE_URL}/api/master/${type === 'stores' ? 'upload-stores' : 'upload-pricelist'}`;
+            // Remove trailing slash from base if exists, then add single /api
+            const base = API_BASE_URL.replace(/\/$/, "");
+            const endpoint = `${base}/api/master/${type === 'stores' ? 'upload-stores' : 'upload-pricelist'}`;
             const response = await fetch(endpoint, {
                 method: 'POST',
                 body: formData,
@@ -86,8 +88,8 @@ const DataSync = () => {
 
                 {status[type] && (
                     <div className={`flex items-center gap-3 p-4 rounded-xl border animate-in fade-in slide-in-from-top-2 duration-300 ${status[type].type === 'success' ? (darkMode ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-emerald-50 border-emerald-200 text-emerald-700') :
-                            status[type].type === 'error' ? (darkMode ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-red-50 border-red-200 text-red-700') :
-                                (darkMode ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' : 'bg-blue-50 border-blue-200 text-blue-700')
+                        status[type].type === 'error' ? (darkMode ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-red-50 border-red-200 text-red-700') :
+                            (darkMode ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' : 'bg-blue-50 border-blue-200 text-blue-700')
                         }`}>
                         {status[type].type === 'success' ? <CheckCircle2 size={18} /> :
                             status[type].type === 'error' ? <AlertCircle size={18} /> :
