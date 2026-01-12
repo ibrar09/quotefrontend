@@ -372,6 +372,13 @@ const NewQuotation = () => {
           location: header.location,
           region: header.region,
           store_opening_date: header.openingDate || null,
+          attentionTo: header.attentionTo,
+          version: header.version,
+          validity: header.validity,
+          mr_priority: header.mrPriority,
+          currency: header.currency,
+          continuous_assessment: header.continuous_assessment,
+          completion_date: completionDate,
           items: items.filter(i => i.code || i.description).map(item => ({
             item_code: item.code,
             description: item.description,
