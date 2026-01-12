@@ -5,7 +5,7 @@ import logoSrc from '../../assets/Maaj-Logo 04.png';
 import API_BASE_URL from '../../config/api';
 import signature from '../../assets/signature.jpeg';
 import stamp from '../../assets/stamp.jpeg';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 // Use origin if API_BASE_URL is relative or missing
 const FINAL_API_URL = (API_BASE_URL && API_BASE_URL !== '') ? API_BASE_URL : window.location.origin;
@@ -53,11 +53,12 @@ const QuotationPrintView = () => {
                     currency: q.currency || 'SAR',
                     description: q.work_description || '',
                     continuous_assessment: q.continuous_assessment || '',
-                    completionDate: q.completion_date || ''
+                    completionDate: q.completion_date || '',
+                    warranty: q.warranty || ''
                 });
 
                 if (q.JobImages && q.JobImages.length > 0) {
-                    setImages(q.JobImages.map(img => img.image_data));
+                    setImages(q.JobImages.map(img => img.file_path || img.image_data));
                 } else if (q.images && q.images.length > 0) {
                     setImages(q.images); // Preview uses 'images' array directly
                 }
@@ -98,6 +99,7 @@ const QuotationPrintView = () => {
             subTotalMaterial,
             subTotalLabor,
             initialScopeTotal,
+            subtotalWithAdjustments: totalWithAdj,
             transportation: transport,
             discount: discount,
             vatAmount: vat,
@@ -123,7 +125,7 @@ const QuotationPrintView = () => {
 
             <div
                 id="quotation-content"
-                className="w-[210mm] max-w-[210mm] min-h-[297mm] p-[10mm] border-none shadow-none flex flex-col gap-1 relative text-black font-bold box-border"
+                className="w-[210mm] max-w-[210mm] min-h-[297mm] p-[10mm] border-none shadow-none text-black font-bold box-border"
                 style={{ color: 'black' }}
             >
                 <style>{`
@@ -134,227 +136,291 @@ const QuotationPrintView = () => {
                 .text-[10px] { font-size: 10px; line-height: 1.1; }
                 .font-bold { font-weight: 600; } 
                 .bg-theme { background-color: #e2d1a5 !important; }
+                
+                table { width: 100%; border-collapse: collapse; }
+                
+                /* Print-specific styles for multi-page support */
+                @media print {
+                  @page { 
+                    size: A4; 
+                    margin: 15mm 10mm; 
+                  }
+                  
+                  body {
+                    print-color-adjust: exact;
+                    -webkit-print-color-adjust: exact;
+                  }
+                  
+                  #quotation-content {
+                    padding: 0 !important;
+                    margin: 0 !important;
+                    display: table !important; /* Ensure it behaves like a table for repeating headers */
+                    width: 100% !important;
+                  }
+
+                  thead {
+                    display: table-header-group; /* Repeats on every page */
+                  }
+
+                  tfoot {
+                    display: table-footer-group;
+                  }
+                  
+                  tr {
+                    page-break-inside: avoid;
+                  }
+                  
+                  /* Ensure Totals Section stays together */
+                  .totals-wrapper {
+                    page-break-inside: avoid !important;
+                    break-inside: avoid !important;
+                    display: block; /* Important for break-inside to work */
+                  }
+                }
              `}</style>
                 <link rel="preconnect" href="https://fonts.googleapis.com" />
                 <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="true" />
                 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet" />
 
-                {/* ============ HEADER ============ */}
-                <div className="flex justify-end items-center border-b-2 border-black pb-2 mb-1">
-                    <img src={logoSrc} alt="MAAJ Logo" className="h-12 object-contain" />
-                </div>
-
-                <div className="bg-theme border-2 border-black py-1 text-center">
-                    <h1 className="text-lg font-bold tracking-[0.3em] text-black uppercase">QUOTATION</h1>
-                </div>
-
-                {/* Grid Table */}
-                <div className="grid grid-cols-12 border-t border-l border-black text-[10px]">
-                    {/* Row 1 */}
-                    <div className="col-span-4 grid grid-cols-4">
-                        <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1 text-[8px] font-bold uppercase">Date</div>
-                        <div className="col-span-3 border-r border-b border-black p-1">{header.date}</div>
-                    </div>
-                    <div className="col-span-4 grid grid-cols-4">
-                        <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1 text-[8px] font-bold uppercase">Attention To</div>
-                        <div className="col-span-3 border-r border-b border-black p-1">{header.attentionTo}</div>
-                    </div>
-                    <div className="col-span-4 grid grid-cols-4">
-                        <div className="col-span-2 bg-theme border-r border-b border-black p-1 text-[8px] font-bold uppercase">Quote Revised</div>
-                        <div className="col-span-2 border-r border-b border-black p-1 font-bold">V.{header.version}</div>
-                    </div>
-
-                    {/* Row 2 */}
-                    <div className="col-span-4 grid grid-cols-4">
-                        <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1 text-[8px] font-bold uppercase">Brand</div>
-                        <div className="col-span-3 border-r border-b border-black p-1">{header.brand}</div>
-                    </div>
-                    <div className="col-span-4 grid grid-cols-4">
-                        <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1 text-[8px] font-bold uppercase">Quote #</div>
-                        <div className="col-span-3 border-r border-b border-black p-1">{header.quoteNo}</div>
-                    </div>
-                    <div className="col-span-4 grid grid-cols-4">
-                        <div className="col-span-2 bg-gray-200 border-r border-b border-black p-1 text-[8px] font-bold uppercase">Validity</div>
-                        <div className="col-span-2 border-r border-b border-black p-1 font-bold">{header.validity}</div>
-                    </div>
-
-                    {/* Row 3 */}
-                    <div className="col-span-4 grid grid-cols-4">
-                        <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1 text-[8px] font-bold uppercase">Location</div>
-                        <div className="col-span-3 border-r border-b border-black p-1">{header.location}</div>
-                    </div>
-                    <div className="col-span-4 grid grid-cols-4">
-                        <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1 text-[8px] font-bold uppercase">MR #</div>
-                        <div className="col-span-3 border-r border-b border-black p-1">{header.mrNo}</div>
-                    </div>
-                    <div className="col-span-4 grid grid-cols-4">
-                        <div className="col-span-2 bg-theme border-r border-b border-black p-1 text-[8px] font-bold uppercase">MR Rec Date</div>
-                        <div className="col-span-2 border-r border-b border-black p-1 font-bold">{header.mrRecDate}</div>
-                    </div>
-
-                    {/* Row 4 */}
-                    <div className="col-span-4 grid grid-cols-4">
-                        <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1 text-[8px] font-bold uppercase">City</div>
-                        <div className="col-span-3 border-r border-b border-black p-1">{header.city}</div>
-                    </div>
-                    <div className="col-span-4 grid grid-cols-4">
-                        <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1 text-[8px] font-bold uppercase">Store CCID</div>
-                        <div className="col-span-3 border-r border-b border-black p-1">{header.storeCcid}</div>
-                    </div>
-                    <div className="col-span-4 grid grid-cols-4">
-                        <div className="col-span-2 bg-theme border-r border-b border-black p-1 text-[8px] font-bold uppercase">MR Priority</div>
-                        <div className="col-span-2 border-r border-b border-black p-1 font-bold">{header.mrPriority}</div>
-                    </div>
-
-                    {/* Row 5 */}
-                    <div className="col-span-8 grid grid-cols-8">
-                        <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1 text-[8px] font-bold uppercase">MR Desc.</div>
-                        <div className="col-span-7 border-r border-b border-black p-1 h-7 overflow-hidden whitespace-nowrap text-ellipsis">{header.mrDesc}</div>
-                    </div>
-                    <div className="col-span-4 grid grid-cols-4">
-                        <div className="col-span-2 bg-theme border-r border-b border-black p-1 text-[8px] font-bold uppercase">Store Opening</div>
-                        <div className="col-span-2 border-r border-b border-black p-1 font-bold">{header.openingDate}</div>
-                    </div>
-
-                    {/* Row 6 */}
-                    <div className="col-span-12 grid grid-cols-12">
-                        <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1 text-[8px] font-bold uppercase">Cont. Assess</div>
-                        <div className="col-span-11 border-r border-b border-black p-1 min-h-[16px] whitespace-pre-wrap text-[10px]">{header.continuous_assessment}</div>
-                    </div>
-                </div>
-
-                {/* Items Table */}
-                <div className="relative overflow-x-auto w-full mt-1">
-                    <table className="w-full border-collapse border border-black text-[10px] table-fixed">
-                        <thead>
-                            <tr className="bg-gray-100 font-bold uppercase text-[9px]">
-                                <th className="border border-black p-1 text-center w-16">CODE</th>
-                                <th className="border border-black p-1 text-left w-[40%]">DESCRIPTION</th>
-                                <th className="border border-black p-1 text-center w-10">UNIT</th>
-                                <th className="border border-black p-1 text-center w-10">QTY</th>
-                                <th className="border border-black p-1 text-right w-16">MAT.</th>
-                                <th className="border border-black p-1 text-right w-16">LAB.</th>
-                                <th className="border border-black p-1 text-right w-20">TOTAL</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {items.map((item) => (
-                                <tr key={item.id} className="align-top leading-tight uppercase font-bold text-[10px]">
-                                    <td className="border border-black p-1 text-center">{item.code}</td>
-                                    <td className="border border-black p-1 whitespace-pre-wrap break-words">{item.description}</td>
-                                    <td className="border border-black p-1 text-center">{item.unit}</td>
-                                    <td className="border border-black p-1 text-center">{(item.qty || 0)}</td>
-                                    <td className="border border-black p-1 text-right">{(item.material || 0).toLocaleString()}</td>
-                                    <td className="border border-black p-1 text-right">{(item.labor || 0).toLocaleString()}</td>
-                                    <td className="border border-black p-1 text-right bg-gray-50/30">
-                                        {((Number(item.qty || 0) * Number(item.material || 0)) + Number(item.labor || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                    </td>
-                                </tr>
-                            ))}
-                            <tr className="font-bold text-[10px] bg-gray-100 uppercase">
-                                <td colSpan={4} className="border border-black text-center p-1"></td>
-                                <td className="border border-black text-right p-1">
-                                    {(items.reduce((sum, item) => sum + Number(item.material || 0), 0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                </td>
-                                <td className="border border-black text-right p-1">
-                                    {items.reduce((sum, item) => sum + Number(item.labor || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                </td>
-                                <td className="border border-black text-right p-1">
-                                    {items.reduce((sum, item) => sum + ((Number(item.qty || 0) * Number(item.material || 0)) + Number(item.labor || 0)), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                {/* Images and Totals */}
-                <div className="flex gap-2 mt-1">
-                    <div className="w-1/2 flex flex-col gap-1">
-                        <div className={`grid w-full h-full gap-1 border border-gray-300 bg-gray-50 p-[1px] ${images.length === 1 ? 'grid-cols-1 grid-rows-1' :
-                            images.length === 2 ? 'grid-cols-1 grid-rows-2' :
-                                'grid-cols-3'
-                            }`}>
-                            {images.map((imgData, i) => (
-                                <div key={i} className="w-full h-full flex items-center justify-center overflow-hidden border border-gray-300 relative">
-                                    <img src={imgData} alt={`Evidence ${i + 1}`} className="w-full h-full object-cover" />
+                <table className="w-full">
+                    {/* REPEATING HEADER: Logo and Title Only */}
+                    <thead>
+                        <tr>
+                            <td colSpan={7}>
+                                <div className="quotation-header flex justify-end items-center border-b-2 border-black pb-2 mb-1">
+                                    <img src={logoSrc} alt="MAAJ Logo" className="h-12 object-contain" />
                                 </div>
-                            ))}
-                        </div>
-                    </div>
+                                <div className="bg-theme border-2 border-black py-1 text-center mb-1">
+                                    <h1 className="text-lg font-bold tracking-[0.3em] text-black uppercase">QUOTATION</h1>
+                                </div>
+                            </td>
+                        </tr>
+                    </thead>
 
-                    <div className="w-1/2">
-                        <table className="w-full border-collapse border border-black text-[10px]">
-                            <tbody className="font-bold">
-                                <tr className="bg-gray-50">
-                                    <td className="border border-black text-left p-1 uppercase" colSpan={2}>TRANSPORTATION</td>
-                                    <td className="border border-black text-right p-1">{(totals.transportation || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                                </tr>
-                                <tr className="bg-gray-50">
-                                    <td className="border border-black text-left p-1 uppercase" colSpan={2}>DISCOUNT</td>
-                                    <td className="border border-black text-right p-1">{(totals.discount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                                </tr>
-                                <tr className="bg-gray-100 italic">
-                                    <td className="border border-black text-left p-1 uppercase" colSpan={2}>Sub-Total</td>
-                                    <td className="border border-black text-right p-1">{(totals.initialScopeTotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                                </tr>
-                                <tr className="bg-gray-50">
-                                    <td className="border border-black text-left p-1 uppercase" colSpan={2}>VAT 15%</td>
-                                    <td className="border border-black text-right p-1">{(totals.vatAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                                </tr>
-                                <tr className="bg-theme text-black text-sm">
-                                    <td className="border border-black text-left p-1 uppercase tracking-wider font-bold text-black" colSpan={2}>TOTAL {header.currency}</td>
-                                    <td className="border border-black text-right p-1 text-lg font-bold bg-white text-black tabular-nums border-l-4 border-l-black ml-1">
-                                        {(totals.grandTotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                    <tbody>
+                        {/* FIRST PAGE ONLY: Details Grid */}
+                        {/* We use a single row with a colspan of 7 (matching item columns) */}
+                        <tr>
+                            <td colSpan={7}>
+                                <div className="grid grid-cols-12 border-t border-l border-black text-[10px] mb-1">
+                                    {/* Rows of Grid Data */}
+                                    <div className="col-span-4 grid grid-cols-4">
+                                        <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1 text-[8px] font-bold uppercase">Date</div>
+                                        <div className="col-span-3 border-r border-b border-black p-1">{header.date}</div>
+                                    </div>
+                                    <div className="col-span-4 grid grid-cols-4">
+                                        <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1 text-[8px] font-bold uppercase">Attention To</div>
+                                        <div className="col-span-3 border-r border-b border-black p-1">{header.attentionTo}</div>
+                                    </div>
+                                    <div className="col-span-4 grid grid-cols-4">
+                                        <div className="col-span-2 bg-theme border-r border-b border-black p-1 text-[8px] font-bold uppercase">Quote Revised</div>
+                                        <div className="col-span-2 border-r border-b border-black p-1 font-bold">V.{header.version}</div>
+                                    </div>
 
-                        <div className="border border-black h-20 mt-1 bg-white flex items-center justify-center">
-                            <div className="flex items-center justify-center gap-8 w-full h-full">
-                                <img src={stamp} alt="Stamp" className="w-16 h-16 object-contain" />
-                                <img src={signature} alt="Signature" className="w-16 h-16 object-contain" />
-                            </div>
-                        </div>
+                                    {/* Row 2 */}
+                                    <div className="col-span-4 grid grid-cols-4">
+                                        <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1 text-[8px] font-bold uppercase">Brand</div>
+                                        <div className="col-span-3 border-r border-b border-black p-1">{header.brand}</div>
+                                    </div>
+                                    <div className="col-span-4 grid grid-cols-4">
+                                        <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1 text-[8px] font-bold uppercase">Quote #</div>
+                                        <div className="col-span-3 border-r border-b border-black p-1">{header.quoteNo}</div>
+                                    </div>
+                                    <div className="col-span-4 grid grid-cols-4">
+                                        <div className="col-span-2 bg-gray-200 border-r border-b border-black p-1 text-[8px] font-bold uppercase">Validity</div>
+                                        <div className="col-span-2 border-r border-b border-black p-1 font-bold">{header.validity}</div>
+                                    </div>
 
-                        <div className="w-full mt-1 bg-gray-200 border border-black text-black text-[10px] font-bold flex">
-                            <div className="flex-1 flex items-center justify-center border-r border-black p-1 gap-2">
-                                <span>Date of Completion:</span>
-                                <span className="border-b border-black w-24 text-center min-h-[14px]">{header.completionDate}</span>
-                            </div>
-                            <div className="flex-1 flex items-center justify-center p-1">
-                                <span>7 days after PO issuance date</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                                    {/* Row 3 */}
+                                    <div className="col-span-4 grid grid-cols-4">
+                                        <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1 text-[8px] font-bold uppercase">Location</div>
+                                        <div className="col-span-3 border-r border-b border-black p-1">{header.location}</div>
+                                    </div>
+                                    <div className="col-span-4 grid grid-cols-4">
+                                        <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1 text-[8px] font-bold uppercase">MR #</div>
+                                        <div className="col-span-3 border-r border-b border-black p-1">{header.mrNo}</div>
+                                    </div>
+                                    <div className="col-span-4 grid grid-cols-4">
+                                        <div className="col-span-2 bg-theme border-r border-b border-black p-1 text-[8px] font-bold uppercase">MR Rec Date</div>
+                                        <div className="col-span-2 border-r border-b border-black p-1 font-bold">{header.mrRecDate}</div>
+                                    </div>
 
-                {/* Footer */}
-                <div className="mt-2 border-t-2 border-black pt-2 flex flex-col gap-1">
-                    <h4 className="text-black font-bold text-[8px] uppercase bg-theme text-center py-1 mb-1">
-                        TERMS AND CONDITIONS
-                    </h4>
-                    <div className="flex border border-black min-h-[80px]">
-                        <div className="flex-1 border-r border-black bg-gray-50 p-2 text-[8px] font-bold">
-                            1. Any Items / work needed to complete the job will be considered within the given total price if not mentioned in the below exclusion list.<br />
-                            2. If completion of job exceeds the specified number of days, a deduction of 100 SR will be considered for every additional delayed day.<br />
-                            3. Parts will be under warranty against manufacturer defects and quality.
-                        </div>
-                        <div className="flex-1 bg-gray-50 p-2">
-                            <h5 className="text-[8px] font-bold uppercase border-b border-black pb-1 mb-1">List of Exclusions</h5>
-                            <div className="text-[8px] font-bold">1. __________________</div>
-                            <div className="text-[8px] font-bold">2. __________________</div>
-                        </div>
-                    </div>
-                </div>
+                                    {/* Row 4 */}
+                                    <div className="col-span-4 grid grid-cols-4">
+                                        <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1 text-[8px] font-bold uppercase">City</div>
+                                        <div className="col-span-3 border-r border-b border-black p-1">{header.city}</div>
+                                    </div>
+                                    <div className="col-span-4 grid grid-cols-4">
+                                        <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1 text-[8px] font-bold uppercase">Store CCID</div>
+                                        <div className="col-span-3 border-r border-b border-black p-1">{header.storeCcid}</div>
+                                    </div>
+                                    <div className="col-span-4 grid grid-cols-4">
+                                        <div className="col-span-2 bg-theme border-r border-b border-black p-1 text-[8px] font-bold uppercase">MR Priority</div>
+                                        <div className="col-span-2 border-r border-b border-black p-1 font-bold">{header.mrPriority}</div>
+                                    </div>
 
-                <div className="text-[9px] font-bold uppercase bg-theme text-center tracking-[0.2em] border-y-2 border-black py-1 mt-4">
-                    APPROVALS
-                </div>
+                                    {/* Row 5 */}
+                                    <div className="col-span-8 grid grid-cols-8">
+                                        <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1 text-[8px] font-bold uppercase">MR Desc.</div>
+                                        <div className="col-span-7 border-r border-b border-black p-1 h-7 overflow-hidden whitespace-nowrap text-ellipsis">{header.mrDesc}</div>
+                                    </div>
+                                    <div className="col-span-4 grid grid-cols-4">
+                                        <div className="col-span-2 bg-theme border-r border-b border-black p-1 text-[8px] font-bold uppercase">Store Opening</div>
+                                        <div className="col-span-2 border-r border-b border-black p-1 font-bold">{header.openingDate}</div>
+                                    </div>
+
+                                    {/* Row 6 */}
+                                    <div className="col-span-12 grid grid-cols-12">
+                                        <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1 text-[8px] font-bold uppercase">Cont. Assess</div>
+                                        <div className="col-span-11 border-r border-b border-black p-1 min-h-[16px] whitespace-pre-wrap text-[10px]">{header.continuous_assessment}</div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+
+                        {/* TABLE COLUMN HEADERS - WILL NOT REPEAT AUTOMATICALLY HERE, AS REQUESTED */}
+                        <tr className="bg-gray-100 font-bold uppercase text-[9px]">
+                            <td className="border border-black p-1 text-center w-16 font-bold">CODE</td>
+                            <td className="border border-black p-1 text-left font-bold">DESCRIPTION</td>
+                            <td className="border border-black p-1 text-center w-10 font-bold">UNIT</td>
+                            <td className="border border-black p-1 text-center w-10 font-bold">QTY</td>
+                            <td className="border border-black p-1 text-right w-16 font-bold">MAT.</td>
+                            <td className="border border-black p-1 text-right w-16 font-bold">LAB.</td>
+                            <td className="border border-black p-1 text-right w-20 font-bold">TOTAL</td>
+                        </tr>
+
+                        {/* ITEMS */}
+                        {items.map((item) => (
+                            <tr key={item.id} className="align-top leading-tight uppercase font-bold text-[10px]">
+                                <td className="border border-black p-1 text-center">{item.code}</td>
+                                <td className="border border-black p-1 whitespace-pre-wrap break-words">{item.description}</td>
+                                <td className="border border-black p-1 text-center">{item.unit}</td>
+                                <td className="border border-black p-1 text-center">{(item.qty || 0)}</td>
+                                <td className="border border-black p-1 text-right">{(item.material || 0).toLocaleString()}</td>
+                                <td className="border border-black p-1 text-right">{(item.labor || 0).toLocaleString()}</td>
+                                <td className="border border-black p-1 text-right bg-gray-50/30">
+                                    {((Number(item.qty || 0) * Number(item.material || 0)) + Number(item.labor || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                </td>
+                            </tr>
+                        ))}
+
+                        {/* ITEMS TOTAL LINE */}
+                        <tr className="font-bold text-[10px] bg-gray-100 uppercase">
+                            <td colSpan={4} className="border border-black text-center p-1"></td>
+                            <td className="border border-black text-right p-1">
+                                {(items.reduce((sum, item) => sum + (Number(item.qty || 0) * Number(item.material || 0)), 0) || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            </td>
+                            <td className="border border-black text-right p-1">
+                                {items.reduce((sum, item) => sum + Number(item.labor || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            </td>
+                            <td className="border border-black text-right p-1">
+                                {items.reduce((sum, item) => sum + ((Number(item.qty || 0) * Number(item.material || 0)) + Number(item.labor || 0)), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            </td>
+                        </tr>
+
+                        {/* TOTALS SECTION WRAPPER */}
+                        <tr>
+                            <td colSpan={7} className="p-0 border-none">
+                                <div className="totals-wrapper mt-1">
+                                    <div className="flex gap-2">
+                                        {/* IMAGES */}
+                                        <div className="w-1/2 flex flex-col gap-1">
+                                            <div className={`grid w-full h-full gap-1 border border-gray-300 bg-gray-50 p-[1px] ${images.length === 1 ? 'grid-cols-1 grid-rows-1' :
+                                                images.length === 2 ? 'grid-cols-1 grid-rows-2' :
+                                                    'grid-cols-3'
+                                                }`}>
+                                                {images.map((imgData, i) => (
+                                                    <div key={i} className="w-full h-full flex items-center justify-center overflow-hidden border border-gray-300 relative">
+                                                        <img src={imgData && imgData.startsWith('/uploads') ? `${FINAL_API_URL}${imgData}` : imgData} alt={`Evidence ${i + 1}`} className="w-full h-full object-cover" />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* CALCULATIONS */}
+                                        <div className="w-1/2">
+                                            <table className="w-full border-collapse border border-black text-[10px]">
+                                                <tbody className="font-bold">
+                                                    <tr className="bg-gray-50">
+                                                        <td className="border border-black text-left p-1 uppercase" colSpan={2}>TRANSPORTATION</td>
+                                                        <td className="border border-black text-right p-1">{(totals.transportation || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                                    </tr>
+                                                    <tr className="bg-gray-50">
+                                                        <td className="border border-black text-left p-1 uppercase" colSpan={2}>DISCOUNT</td>
+                                                        <td className="border border-black text-right p-1">{(totals.discount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                                    </tr>
+                                                    <tr className="bg-gray-100 italic">
+                                                        <td className="border border-black text-left p-1 uppercase" colSpan={2}>Sub-Total</td>
+                                                        <td className="border border-black text-right p-1">{(totals.subtotalWithAdjustments || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                                    </tr>
+                                                    <tr className="bg-gray-50">
+                                                        <td className="border border-black text-left p-1 uppercase" colSpan={2}>VAT 15%</td>
+                                                        <td className="border border-black text-right p-1">{(totals.vatAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                                    </tr>
+                                                    <tr className="bg-theme text-black text-sm">
+                                                        <td className="border border-black text-left p-1 uppercase tracking-wider font-bold text-black" colSpan={2}>TOTAL {header.currency}</td>
+                                                        <td className="border border-black text-right p-1 text-lg font-bold bg-white text-black tabular-nums border-l-4 border-l-black ml-1">
+                                                            {(totals.grandTotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+
+                                            <div className="border border-black h-40 mt-1 bg-white flex items-center justify-center">
+                                                <div className="flex items-center justify-center gap-8 w-full h-full">
+                                                    <img src={stamp} alt="Stamp" className="w-40 h-40 object-contain" />
+                                                    <img src={signature} alt="Signature" className="w-16 h-16 object-contain" />
+                                                </div>
+                                            </div>
+
+                                            <div className="w-full mt-1 bg-gray-200 border border-black text-black text-[10px] font-bold flex">
+                                                <div className="flex-1 flex items-center justify-center border-r border-black p-1 gap-2">
+                                                    <span>Date of Completion:</span>
+                                                    <span className="border-b border-black w-24 text-center min-h-[14px]">{header.completionDate}</span>
+                                                </div>
+                                                <div className="flex-1 flex items-center justify-center p-1">
+                                                    <span>7 days after PO issuance date</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* TERMS AND CONDITIONS */}
+                                    <div className="terms-section mt-2 border-t-2 border-black pt-2 flex flex-col gap-1">
+                                        <h4 className="text-black font-bold text-[8px] uppercase bg-theme text-center py-1 mb-1">
+                                            TERMS AND CONDITIONS
+                                        </h4>
+                                        <div className="flex border border-black min-h-[80px]">
+                                            <div className="flex-1 border-r border-black bg-gray-50 flex flex-col gap-1 p-2">
+                                                <div className="text-[8px] font-bold">
+                                                    1. Any Items / work needed to complete the job will be considered within the given total price if not mentioned in the below exclusion list.<br />
+                                                    2. If completion of job exceeds the specified number of days, a deduction of 100 SR will be considered for every additional delayed day.<br />
+                                                    3. Parts will be under warranty against manufacturer defects and quality.
+                                                </div>
+                                                <div className="flex items-center gap-2 mt-2">
+                                                    <span className="text-[8px] font-bold uppercase">Parts Warranty Period:</span>
+                                                    <span className="flex-1 text-[8px] font-bold border-b border-black min-h-[14px]">{header?.warranty || ''}</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex-1 bg-gray-50 p-2">
+                                                <h5 className="text-[8px] font-bold uppercase border-b border-black pb-1 mb-1">List of Exclusions</h5>
+                                                <div className="text-[8px] font-bold">1. __________________</div>
+                                                <div className="text-[8px] font-bold">2. __________________</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="text-[9px] font-bold uppercase bg-theme text-center tracking-[0.2em] border-y-2 border-black py-1 mt-4">
+                                        APPROVALS
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     );
 };
 
 export default QuotationPrintView;
-

@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Edit, Download, Search } from 'lucide-react';
+import { Plus, Edit, Download, Search, RefreshCw } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import QuotationEditModal from './QuotationEditModal';
 import { useTheme } from '../../context/ThemeContext';
 import API_BASE_URL from '../../config/api';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import logoSrc from '../../assets/Maaj-Logo 04.png';
+import QuotationEditModal from './QuotationEditModal';
 
 const QuotationList = () => {
     const [quotations, setQuotations] = useState([]);
@@ -266,8 +266,8 @@ const QuotationList = () => {
                         type="text"
                         placeholder="Search Quote #, MR #, Brand or Description..."
                         className={`block w-full pl-10 pr-3 py-2 border rounded-lg leading-5 transition duration-150 ease-in-out sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#00a8aa] ${darkMode
-                                ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500'
-                                : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+                            ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500'
+                            : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
                             }`}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -345,11 +345,11 @@ const QuotationList = () => {
                     <tbody className={darkMode ? 'text-gray-300' : 'text-black'}>
                         {loading ? (
                             <tr>
-                                <td colSpan="41" className="p-8 text-center font-bold">Loading...</td>
+                                <td colSpan="40" className="p-8 text-center font-bold">Loading...</td>
                             </tr>
                         ) : filteredQuotations.length === 0 ? (
                             <tr>
-                                <td colSpan="41" className="p-8 text-center opacity-50">No quotations found for this status.</td>
+                                <td colSpan="40" className="p-8 text-center opacity-50">No quotations found for this status.</td>
                             </tr>
                         ) : filteredQuotations.map((q, i) => {
                             const po = q.PurchaseOrders?.[0] || {};
@@ -358,9 +358,22 @@ const QuotationList = () => {
                             return (
                                 <tr key={q.id} className={themeStyles.tableRow}>
                                     <td className="p-2 text-center">
-                                        <button onClick={() => setSelectedQuotation(q)} className="hover:scale-110 transition-transform">
-                                            <Edit size={12} className={darkMode ? "text-cyan-400" : "text-blue-600"} />
-                                        </button>
+                                        <div className="flex items-center justify-center gap-2">
+                                            <button
+                                                onClick={() => navigate('/quotations/new-quotation', { state: { loadFromQuotation: q } })}
+                                                className="hover:scale-110 transition-transform p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-amber-500"
+                                                title="Revise Quotation (Full Editor)"
+                                            >
+                                                <RefreshCw size={14} />
+                                            </button>
+                                            <button
+                                                onClick={() => setSelectedQuotation(q)}
+                                                className="hover:scale-110 transition-transform p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-cyan-500"
+                                                title="Quick Update (PO/Finance/Status)"
+                                            >
+                                                <Edit size={14} />
+                                            </button>
+                                        </div>
                                     </td>
                                     <td className="p-2 text-center opacity-60">{i + 1}</td>
                                     <td className="p-2">{q.brand_name || q.Store?.brand || '-'}</td>

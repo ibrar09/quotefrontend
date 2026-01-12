@@ -1,19 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FileText, ArrowRightCircle, Loader2, Save } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import logoSrc from '../../assets/Maaj-Logo 04.png';
 import API_BASE_URL from '../../config/api';
 
 const QuotationIntake = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [loading, setLoading] = useState(false);
     const { darkMode, themeStyles, colors } = useTheme();
     const [data, setData] = useState({
+        id: null,
         mrNo: '',
         storeCcid: '',
         mrDesc: ''
     });
+
+    useEffect(() => {
+        if (location.state?.editIntake) {
+            const intake = location.state.editIntake;
+            setData({
+                id: intake.id,
+                mrNo: intake.mr_no || '',
+                storeCcid: intake.oracle_ccid || '',
+                mrDesc: intake.work_description || ''
+            });
+        }
+    }, [location.state]);
 
     const handleNext = () => {
         if (!data.mrNo || !data.storeCcid) {

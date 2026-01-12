@@ -13,7 +13,7 @@ const NewQuotation = () => {
   const MAX_IMAGES = 9;
   const navigate = useNavigate();
   const location = useLocation();
-  const suggestionRef = useRef(null);
+  const suggestionContainerRef = useRef(null);
 
   const { darkMode, colors, themeStyles } = useTheme();
 
@@ -44,6 +44,7 @@ const NewQuotation = () => {
 
   const [adj, setAdj] = useState({ transportation: 0, discount: 0 });
   const [images, setImages] = useState([]);
+  const [rawFiles, setRawFiles] = useState([]); // Track actual File objects for upload
   const [loadingStore, setLoadingStore] = useState(false);
   const [storeStatus, setStoreStatus] = useState(null);
   const [priceSuggestions, setPriceSuggestions] = useState([]);
@@ -55,6 +56,17 @@ const NewQuotation = () => {
   const [warranty, setWarranty] = useState("");
   const [approval, setApproval] = useState({ prepared: '', reviewed: '', approved: '' });
   const [highlightedSuggestion, setHighlightedSuggestion] = useState(0);
+  const suggestionItemRefs = useRef([]);
+
+  // Auto-scroll logic for suggestions
+  useEffect(() => {
+    if (priceSuggestions.length > 0 && suggestionItemRefs.current[highlightedSuggestion]) {
+      suggestionItemRefs.current[highlightedSuggestion].scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest'
+      });
+    }
+  }, [highlightedSuggestion, priceSuggestions]);
 
   // --- Store Auto-fill Logic ---
   const handleStoreLookup = async (val) => {
@@ -132,22 +144,95 @@ const NewQuotation = () => {
   useEffect(() => {
     const state = location.state;
     if (state) {
-      const { mrNo, storeCcid, workDescription, brand, city, location: mall, region } = state;
+      // CASE 1: Load Full Quotation for Revision
+      if (state.loadFromQuotation) {
+        const initialQ = state.loadFromQuotation;
+        console.log("Loading quotation for revision (fetching details):", initialQ.id);
 
-      setHeader(prev => ({
-        ...prev,
-        mrNo: mrNo || prev.mrNo,
-        storeCcid: storeCcid || prev.storeCcid,
-        mrDesc: workDescription || prev.mrDesc,
-        description: workDescription || prev.description,
-        brand: brand || prev.brand,
-        city: city || prev.city,
-        location: mall || prev.location,
-        region: region || prev.region
-      }));
+        // Fetch full details to get Items and Images which are not in the list view
+        setLoadingStore(true);
+        axios.get(`${API_BASE_URL}/api/quotations/${initialQ.id}`)
+          .then(res => {
+            if (res.data.success) {
+              const q = res.data.data;
+              console.log("Full quotation details loaded:", q);
 
-      if (storeCcid) {
-        handleStoreLookup(storeCcid);
+              setHeader(prev => ({
+                ...prev,
+                id: q.id,
+                date: q.createdAt ? q.createdAt.split('T')[0] : new Date().toISOString().split('T')[0],
+                brand: q.brand || q.Store?.brand || '',
+                location: q.location || q.Store?.mall || '',
+                city: q.city || q.Store?.city || '',
+                quoteNo: q.quote_no || prev.quoteNo,
+                mrNo: q.mr_no || '',
+                storeCcid: q.oracle_ccid || '',
+                version: q.version || '1.0',
+                validity: q.validity || '30 Days',
+                mrRecDate: q.mr_date || '',
+                mrPriority: q.mr_priority || 'Normal',
+                mrDesc: q.work_description || '',
+                openingDate: q.store_opening_date || '',
+                currency: q.currency || 'SAR',
+                attentionTo: q.Store?.fm_manager || q.Store?.fm_supervisor || q.attentionTo || '',
+                description: q.work_description || '',
+                continuous_assessment: q.continuous_assessment || '',
+                region: q.region || ''
+              }));
+
+              // Items
+              if (q.JobItems && q.JobItems.length > 0) {
+                setItems(q.JobItems.map(ji => ({
+                  id: crypto.randomUUID(),
+                  code: ji.item_code || '',
+                  description: ji.description || '',
+                  unit: ji.unit || 'PCS',
+                  qty: ji.quantity || 1,
+                  material: Number(ji.material_price) || 0,
+                  labor: Number(ji.labor_price) || 0
+                })));
+              }
+
+              // Images
+              if (q.JobImages && q.JobImages.length > 0) {
+                setImages(q.JobImages.map(img => img.file_path || img.image_data));
+              }
+
+              // Adjustments
+              setAdj({
+                transportation: Number(q.transportation || 0),
+                discount: Number(q.discount || 0)
+              });
+            }
+          })
+          .catch(err => {
+            console.error("Failed to load revision details:", err);
+            alert("Failed to load full details for revision. Please try again.");
+          })
+          .finally(() => {
+            setLoadingStore(false);
+          });
+
+      }
+      // CASE 2: Create New from Store/MR Data (Existing Logic)
+      else {
+        const { mrNo, storeCcid, workDescription, brand, city, location: mall, region } = state;
+
+        setHeader(prev => ({
+          ...prev,
+          mrNo: mrNo || prev.mrNo,
+          storeCcid: storeCcid || prev.storeCcid,
+          mrDesc: workDescription || prev.mrDesc,
+          description: workDescription || prev.description,
+          brand: brand || prev.brand,
+          city: city || prev.city,
+          location: mall || prev.location,
+          region: region || prev.region
+        }));
+
+        if (storeCcid) {
+          handleStoreLookup(storeCcid);
+        }
       }
     }
   }, [location.state]);
@@ -155,10 +240,8 @@ const NewQuotation = () => {
   // --- Click Outside to close suggestions ---
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (suggestionRef.current && !suggestionRef.current.contains(event.target)) {
+      if (suggestionContainerRef.current && !suggestionContainerRef.current.contains(event.target)) {
         setPriceSuggestions([]);
-        setActiveRow(null);
-        setActiveField(null);
       }
     };
 
@@ -193,6 +276,7 @@ const NewQuotation = () => {
       console.log(`[SUGGEST] Found ${res.data.data?.length || 0} items`);
       setPriceSuggestions(res.data.data || []);
       setHighlightedSuggestion(0);
+      suggestionItemRefs.current = []; // Reset refs
     } catch (err) {
       console.error("Error fetching prices:", err);
     }
@@ -231,8 +315,61 @@ const NewQuotation = () => {
   };
 
   // --- Excel-like Navigation & Paste ---
+  const handleHeaderKeyDown = (e, field) => {
+    const rowMappings = {
+      date: { down: 'brand', right: 'attentionTo' },
+      attentionTo: { down: 'quoteNo', left: 'date', right: 'version' },
+      brand: { up: 'date', down: 'location', right: 'quoteNo' },
+      quoteNo: { up: 'attentionTo', down: 'mrNo', left: 'brand', right: 'validity' },
+      location: { up: 'brand', down: 'city', right: 'mrNo' },
+      mrNo: { up: 'quoteNo', down: 'storeCcid', left: 'location', right: 'mrRecDate' },
+      mrRecDate: { up: 'validity', down: 'mrPriority', left: 'mrNo' },
+      city: { up: 'location', down: 'mrDesc', right: 'storeCcid' },
+      storeCcid: { up: 'mrNo', down: 'mrDesc', left: 'city', right: 'mrPriority' },
+      mrPriority: { up: 'mrRecDate', down: 'openingDate', left: 'storeCcid' },
+      mrDesc: { up: 'city', down: 'continuous_assessment', right: 'openingDate' },
+      openingDate: { up: 'mrPriority', down: 'continuous_assessment', left: 'mrDesc' },
+      continuous_assessment: { up: 'mrDesc', down: 'grid_start' }
+    };
+
+    const map = rowMappings[field];
+    if (!map) return;
+
+    if (e.key === 'ArrowDown' || e.key === 'Enter') {
+      e.preventDefault();
+      if (map.down === 'grid_start') {
+        const firstInput = document.querySelector(`[data-row="0"][data-col="code"]`);
+        firstInput?.focus();
+        if (firstInput?.select) firstInput.select();
+      } else {
+        const next = document.querySelector(`[data-row="header"][data-col="${map.down}"]`);
+        next?.focus();
+        if (next?.select) next.select();
+      }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const prev = document.querySelector(`[data-row="header"][data-col="${map.up}"]`);
+      prev?.focus();
+      if (prev?.select) prev.select();
+    } else if (e.key === 'ArrowRight' && (e.target.selectionEnd === e.target.value.length || e.target.type === 'date')) {
+      if (map.right) {
+        e.preventDefault();
+        const next = document.querySelector(`[data-row="header"][data-col="${map.right}"]`);
+        next?.focus();
+        if (next?.select) next.select();
+      }
+    } else if (e.key === 'ArrowLeft' && (e.target.selectionStart === 0 || e.target.type === 'date')) {
+      if (map.left) {
+        e.preventDefault();
+        const prev = document.querySelector(`[data-row="header"][data-col="${map.left}"]`);
+        prev?.focus();
+        if (prev?.select) prev.select();
+      }
+    }
+  };
+
   const handleGridKeyDown = (e, index, field) => {
-    const fields = ['code', 'description', 'unit', 'qty', 'material', 'labor'];
+    const fields = ['code', 'description', 'unit', 'qty', 'material', 'labor', 'total'];
     const fieldIdx = fields.indexOf(field);
 
     // Handle Suggestions Navigation if open
@@ -254,10 +391,12 @@ const NewQuotation = () => {
       }
     }
 
-    if (e.key === 'ArrowDown' || (e.key === 'Enter' && !e.shiftKey)) {
+    const isBoundaryDown = e.target.tagName !== 'TEXTAREA' || e.target.selectionEnd === e.target.value.length;
+    const isBoundaryUp = e.target.tagName !== 'TEXTAREA' || e.target.selectionStart === 0;
+
+    if ((e.key === 'ArrowDown' && isBoundaryDown) || (e.key === 'Enter' && !e.shiftKey)) {
       e.preventDefault();
       if (index === items.length - 1) {
-        // Move to transportation if reaching bottom of items
         const nextInput = document.querySelector(`[data-row="adj"][data-col="transportation"]`);
         if (nextInput) {
           nextInput.focus();
@@ -273,10 +412,17 @@ const NewQuotation = () => {
         const nextInput = document.querySelector(`[data-row="${index + 1}"][data-col="${field}"]`);
         nextInput?.focus();
       }
-    } else if (e.key === 'ArrowUp' || (e.key === 'Enter' && e.shiftKey)) {
+    } else if ((e.key === 'ArrowUp' && isBoundaryUp) || (e.key === 'Enter' && e.shiftKey)) {
       e.preventDefault();
-      const prevInput = document.querySelector(`[data-row="${index - 1}"][data-col="${field}"]`);
-      prevInput?.focus();
+      if (index === 0) {
+        // Move back to header (continuous assessment)
+        const headerEnd = document.querySelector(`[data-row="header"][data-col="continuous_assessment"]`);
+        headerEnd?.focus();
+        headerEnd?.select();
+      } else {
+        const prevInput = document.querySelector(`[data-row="${index - 1}"][data-col="${field}"]`);
+        prevInput?.focus();
+      }
     } else if (e.key === 'ArrowRight' && (e.target.selectionEnd === e.target.value.length || e.target.type === 'number')) {
       if (fieldIdx < fields.length - 1) {
         e.preventDefault();
@@ -290,7 +436,7 @@ const NewQuotation = () => {
         prevInput?.focus();
       }
     } else if (e.key === 'Tab') {
-      if (index === items.length - 1 && field === 'labor') {
+      if (index === items.length - 1 && field === 'total') {
         e.preventDefault();
         addRow();
         setTimeout(() => {
@@ -301,21 +447,46 @@ const NewQuotation = () => {
     }
   };
 
-  const handleFooterKeyDown = (e, field) => {
+  const handleFooterKeyDown = (e, field, index) => {
     if (e.key === 'ArrowUp') {
       e.preventDefault();
       if (field === 'transportation') {
-        // Move back to last item in the grid (labor column)
-        const lastInput = document.querySelector(`[data-row="${items.length - 1}"][data-col="labor"]`);
+        const lastInput = document.querySelector(`[data-row="${items.length - 1}"][data-col="total"]`);
         lastInput?.focus();
-        lastInput?.select();
+        if (lastInput?.select) lastInput.select();
       } else if (field === 'discount') {
         document.querySelector(`[data-row="adj"][data-col="transportation"]`)?.focus();
+      } else if (field === 'completionDate') {
+        document.querySelector(`[data-row="adj"][data-col="discount"]`)?.focus();
+      } else if (field === 'warranty') {
+        document.querySelector(`[data-row="footer"][data-col="completionDate"]`)?.focus();
+      } else if (field === 'exclusion') {
+        if (index === 0) {
+          document.querySelector(`[data-row="footer"][data-col="warranty"]`)?.focus();
+        } else {
+          document.querySelector(`[data-row="exclusion"][data-col="${index - 1}"]`)?.focus();
+        }
       }
     } else if (e.key === 'ArrowDown' || e.key === 'Enter') {
       e.preventDefault();
       if (field === 'transportation') {
-        document.querySelector(`[data-row="adj"][data-col="discount"]`)?.focus();
+        const next = document.querySelector(`[data-row="adj"][data-col="discount"]`);
+        next?.focus();
+        if (next?.select) next.select();
+      } else if (field === 'discount') {
+        const next = document.querySelector(`[data-row="footer"][data-col="completionDate"]`);
+        next?.focus();
+        if (next?.select) next.select();
+      } else if (field === 'completionDate') {
+        const next = document.querySelector(`[data-row="footer"][data-col="warranty"]`);
+        next?.focus();
+        if (next?.select) next.select();
+      } else if (field === 'warranty') {
+        document.querySelector(`[data-row="exclusion"][data-col="0"]`)?.focus();
+      } else if (field === 'exclusion') {
+        if (index < exclusions.length - 1) {
+          document.querySelector(`[data-row="exclusion"][data-col="${index + 1}"]`)?.focus();
+        }
       }
     }
   };
@@ -370,6 +541,7 @@ const NewQuotation = () => {
       subTotalMaterial,
       subTotalLabor,
       initialScopeTotal,
+      subtotalWithAdjustments: totalWithAdj,
       transportation: Number(adj.transportation || 0),
       discount: Number(adj.discount || 0),
       vatAmount: vat,
@@ -407,20 +579,37 @@ const NewQuotation = () => {
           unit_price: (Number(item.material) || 0) + (Number(item.labor) || 0),
           remarks: item.remarks
         })),
-        images: images.filter(img => img !== null)
+        // Only send existing image paths/legacy data to the main update
+        // New files will be uploaded separately via FormData
+        images: images.filter(img => typeof img === 'string' && !img.startsWith('data:'))
       };
 
       let res;
       if (header.id) {
-        // Update existing (PUT)
         res = await axios.put(`${API_BASE_URL}/api/quotations/${header.id}`, payload);
       } else {
-        // Create new (POST)
         res = await axios.post(`${API_BASE_URL}/api/quotations`, payload);
       }
 
       if (res.data.success) {
-        return res.data.data;
+        const savedJob = res.data.data;
+
+        // NOW: Upload New Files if any
+        if (rawFiles.length > 0) {
+          const formData = new FormData();
+          rawFiles.forEach(file => {
+            formData.append('images', file);
+          });
+
+          await axios.post(`${API_BASE_URL}/api/quotations/${savedJob.id}/images`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
+
+          // Clear raw files after successful upload
+          setRawFiles([]);
+        }
+
+        return savedJob;
       }
     } catch (err) {
       console.error("Save failed:", err);
@@ -449,6 +638,9 @@ const NewQuotation = () => {
   const handleFiles = (files) => {
     const validFiles = Array.from(files).slice(0, MAX_IMAGES - images.length);
 
+    // Maintain raw files for upload
+    setRawFiles(prev => [...prev, ...validFiles]);
+
     validFiles.forEach(file => {
       const reader = new FileReader();
       reader.onload = () => {
@@ -469,6 +661,7 @@ const NewQuotation = () => {
 
   const removeImage = (index) => {
     setImages(prev => prev.filter((_, i) => i !== index));
+    setRawFiles(prev => prev.filter((_, i) => i !== index));
   };
 
 
@@ -485,6 +678,20 @@ const NewQuotation = () => {
     setItems(prev => prev.map(item =>
       item.id === id ? { ...item, [field]: value } : item
     ));
+  };
+
+  const handleTotalChange = (id, newTotal) => {
+    setItems(prev => prev.map(item => {
+      if (item.id === id) {
+        const qty = Number(item.qty) || 0;
+        const mat = Number(item.material) || 0;
+        const totalValue = Number(newTotal) || 0;
+        // Logic: Total = (Qty * Material) + Labor  => Labor = Total - (Qty * Material)
+        const adjustedLabor = totalValue - (qty * mat);
+        return { ...item, labor: adjustedLabor };
+      }
+      return item;
+    }));
   };
 
 
@@ -614,101 +821,118 @@ const NewQuotation = () => {
         <div className="grid grid-cols-1 md:grid-cols-12 border-t border-l border-black text-[10px]">
 
           {/* ================= ROW 1 ================= */}
-          <div className="col-span-full md:col-span-4 grid grid-cols-4">
-            <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1.5 text-[9px] font-bold uppercase text-black">
+          <div className="col-span-full md:col-span-6 grid grid-cols-4">
+            <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1 text-[9px] font-bold uppercase text-black">
               Date
             </div>
             <div className="col-span-3 border-r border-b border-black p-1.5">
               <input
+                data-row="header"
+                data-col="date"
                 type="date"
                 className="w-full outline-none font-semibold uppercase bg-transparent no-print text-black cursor-pointer"
                 style={{ color: 'black' }}
                 value={header.date}
                 onChange={(e) => handleHeaderChange('date', e.target.value)}
+                onKeyDown={(e) => handleHeaderKeyDown(e, 'date')}
+                onFocus={(e) => e.target.select()}
               />
               <span className="print-only text-black">{header.date}</span>
             </div>
           </div>
 
-          <div className="col-span-4 grid grid-cols-4">
-            <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1.5 text-[9px] font-bold uppercase text-black">
+          <div className="col-span-full md:col-span-6 grid grid-cols-4">
+            <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1 text-[8px] font-bold uppercase text-black leading-tight">
               Attention To
             </div>
-            <div className="col-span-3 border-r border-b border-black p-1.5">
+            <div className="col-span-3 border-r border-b border-black p-1">
               <input
+                data-row="header"
+                data-col="attentionTo"
                 className="w-full outline-none font-semibold uppercase bg-transparent no-print text-black"
                 style={{ color: 'black' }}
                 value={header.attentionTo}
                 onChange={(e) => handleHeaderChange('attentionTo', e.target.value)}
+                onKeyDown={(e) => handleHeaderKeyDown(e, 'attentionTo')}
+                onFocus={(e) => e.target.select()}
               />
               <span className="print-only text-black">{header.attentionTo}</span>
             </div>
           </div>
 
-          <div className="col-span-4 grid grid-cols-4">
-            <div className="col-span-2 bg-[#e2d1a5] border-r border-b border-black p-1 text-[9px] font-bold uppercase" style={{ backgroundColor: '#e2d1a5' }}>
-              Quote Revised
-            </div>
-            <div className="col-span-2 border-r border-b border-black p-1 font-bold">V.{header.version}</div>
-          </div>
-
           {/* ================= ROW 2 ================= */}
           <div className="col-span-4 grid grid-cols-4">
-            <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1.5 text-[9px] font-bold uppercase text-black">
+            <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1 text-[9px] font-bold uppercase text-black">
               Brand
             </div>
             <div className="col-span-3 border-r border-b border-black p-1.5">
               <input
+                data-row="header"
+                data-col="brand"
                 className="w-full outline-none font-semibold uppercase bg-transparent no-print text-black"
                 style={{ color: 'black' }}
                 value={header.brand}
                 onChange={(e) => handleHeaderChange('brand', e.target.value)}
+                onKeyDown={(e) => handleHeaderKeyDown(e, 'brand')}
+                onFocus={(e) => e.target.select()}
               />
               <span className="print-only text-black">{header.brand}</span>
             </div>
           </div>
 
           <div className="col-span-4 grid grid-cols-4">
-            <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1.5 text-[9px] font-bold uppercase text-black">
+            <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1 text-[9px] font-bold uppercase text-black">
               Quote #
             </div>
             <div className="col-span-3 border-r border-b border-black p-1.5 text-black">
               <input
+                data-row="header"
+                data-col="quoteNo"
                 className="w-full outline-none font-semibold uppercase bg-transparent no-print text-black"
                 style={{ color: 'black' }}
                 value={header.quoteNo}
                 onChange={(e) => handleHeaderChange('quoteNo', e.target.value)}
+                onKeyDown={(e) => handleHeaderKeyDown(e, 'quoteNo')}
+                onFocus={(e) => e.target.select()}
               />
               <span className="print-only text-black">{header.quoteNo}</span>
             </div>
           </div>
 
           <div className="col-span-4 grid grid-cols-4">
-            <div className="col-span-2 bg-gray-200 border-r border-b border-black p-1.5 text-[9px] font-bold uppercase">Validity</div>
+            <div className="col-span-2 bg-gray-200 border-r border-b border-black p-1 text-[9px] font-bold uppercase">Validity</div>
             <div className="col-span-2 border-r border-b border-black p-1.5 font-bold">{header.validity}</div>
           </div>
 
           {/* ================= ROW 3 ================= */}
           <div className="col-span-4 grid grid-cols-4">
-            <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1.5 text-[9px] font-bold uppercase text-black">Location</div>
+            <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1 text-[9px] font-bold uppercase text-black">Location</div>
             <div className="col-span-3 border-r border-b border-black p-1.5">
               <input
+                data-row="header"
+                data-col="location"
                 className="w-full outline-none font-semibold uppercase bg-transparent no-print text-black"
                 style={{ color: 'black' }}
                 value={header.location}
                 onChange={(e) => handleHeaderChange('location', e.target.value)}
+                onKeyDown={(e) => handleHeaderKeyDown(e, 'location')}
+                onFocus={(e) => e.target.select()}
               />
               <span className="print-only text-black">{header.location}</span>
             </div>
           </div>
 
           <div className="col-span-4 grid grid-cols-4">
-            <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1.5 text-[9px] font-bold uppercase">MR #</div>
+            <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1 text-[9px] font-bold uppercase">MR #</div>
             <div className="col-span-3 border-r border-b border-black p-1.5 relative">
               <input
+                data-row="header"
+                data-col="mrNo"
                 className="w-full outline-none font-semibold uppercase bg-transparent pr-8 no-print"
                 value={header.mrNo}
                 onChange={(e) => handleHeaderChange('mrNo', e.target.value)}
+                onKeyDown={(e) => handleHeaderKeyDown(e, 'mrNo')}
+                onFocus={(e) => e.target.select()}
               />
               <span className="print-only">{header.mrNo}</span>
             </div>
@@ -718,10 +942,14 @@ const NewQuotation = () => {
             <div className="col-span-2 bg-[#e2d1a5] border-r border-b border-black p-1 text-[9px] font-bold uppercase" style={{ backgroundColor: '#e2d1a5' }}>MR Rec Date</div>
             <div className="col-span-2 border-r border-b border-black p-1">
               <input
+                data-row="header"
+                data-col="mrRecDate"
                 type="date"
                 className="w-full outline-none font-semibold uppercase bg-transparent no-print"
                 value={header.mrRecDate}
                 onChange={(e) => handleHeaderChange('mrRecDate', e.target.value)}
+                onKeyDown={(e) => handleHeaderKeyDown(e, 'mrRecDate')}
+                onFocus={(e) => e.target.select()}
               />
               <span className="print-only">{header.mrRecDate}</span>
             </div>
@@ -729,28 +957,38 @@ const NewQuotation = () => {
 
           {/* ================= ROW 4 ================= */}
           <div className="col-span-4 grid grid-cols-4">
-            <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1.5 text-[9px] font-bold uppercase text-black">City</div>
+            <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1 text-[9px] font-bold uppercase text-black">City</div>
             <div className="col-span-3 border-r border-b border-black p-1.5">
               <input
+                data-row="header"
+                data-col="city"
                 className="w-full outline-none font-semibold uppercase bg-transparent no-print text-black"
                 style={{ color: 'black' }}
                 value={header.city}
                 onChange={(e) => handleHeaderChange('city', e.target.value)}
+                onKeyDown={(e) => handleHeaderKeyDown(e, 'city')}
+                onFocus={(e) => e.target.select()}
               />
               <span className="print-only text-black">{header.city}</span>
             </div>
           </div>
 
           <div className="col-span-4 grid grid-cols-4">
-            <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1.5 text-[9px] font-bold uppercase text-black">Store CCID</div>
+            <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1 text-[9px] font-bold uppercase text-black">Store CCID</div>
             <div className="col-span-3 border-r border-b border-black p-1.5 relative text-black">
               <input
+                data-row="header"
+                data-col="storeCcid"
                 className={`w-full outline-none font-semibold uppercase bg-transparent pr-12 no-print text-black ${storeStatus === 'error' ? 'text-red-600' : storeStatus === 'manual' ? 'text-yellow-600' : ''}`}
                 style={{ color: 'black' }}
                 value={header.storeCcid}
                 onChange={(e) => handleHeaderChange('storeCcid', e.target.value)}
                 onBlur={() => handleStoreLookup()}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleStoreLookup(); }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !header.storeCcid) handleStoreLookup();
+                  handleHeaderKeyDown(e, 'storeCcid');
+                }}
+                onFocus={(e) => e.target.select()}
               />
               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 no-print">
                 {loadingStore && <Loader2 size={16} className="animate-spin text-gray-400" />}
@@ -773,10 +1011,14 @@ const NewQuotation = () => {
             <div className="col-span-2 bg-[#e2d1a5] border-r border-b border-black p-1 text-[9px] font-bold uppercase text-black" style={{ backgroundColor: '#e2d1a5' }}>MR Priority</div>
             <div className="col-span-2 border-r border-b border-black p-1">
               <input
+                data-row="header"
+                data-col="mrPriority"
                 className="w-full outline-none font-semibold uppercase bg-transparent no-print text-black"
                 style={{ color: 'black' }}
                 value={header.mrPriority}
                 onChange={(e) => handleHeaderChange('mrPriority', e.target.value)}
+                onKeyDown={(e) => handleHeaderKeyDown(e, 'mrPriority')}
+                onFocus={(e) => e.target.select()}
               />
               <span className="print-only text-black">{header.mrPriority}</span>
             </div>
@@ -784,14 +1026,18 @@ const NewQuotation = () => {
 
           {/* ================= ROW 5 ================= */}
           <div className="col-span-full md:col-span-8 grid grid-cols-8">
-            <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1.5 text-[9px] font-bold uppercase text-black">MR Desc.</div>
+            <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1 text-[9px] font-bold uppercase text-black">MR Desc.</div>
             <div className="col-span-7 border-r border-b border-black p-1.5">
               <textarea
+                data-row="header"
+                data-col="mrDesc"
                 className="w-full outline-none font-semibold uppercase bg-transparent resize-none h-8 leading-tight no-print text-black"
                 style={{ color: 'black' }}
                 value={header.mrDesc || header.description}
                 onChange={(e) => handleHeaderChange('mrDesc', e.target.value)}
                 placeholder="ENTER WORK DESCRIPTION HERE..."
+                onKeyDown={(e) => handleHeaderKeyDown(e, 'mrDesc')}
+                onFocus={(e) => e.target.select()}
               />
               <div className="print-only h-8 leading-tight text-black">{header.mrDesc || header.description}</div>
             </div>
@@ -803,10 +1049,14 @@ const NewQuotation = () => {
             </div>
             <div className="col-span-2 border-r border-b border-black p-1">
               <input
+                data-row="header"
+                data-col="openingDate"
                 type="date"
                 className="w-full outline-none font-semibold uppercase bg-transparent no-print"
                 value={header.openingDate}
                 onChange={(e) => handleHeaderChange('openingDate', e.target.value)}
+                onKeyDown={(e) => handleHeaderKeyDown(e, 'openingDate')}
+                onFocus={(e) => e.target.select()}
               />
               <span className="print-only">{header.openingDate}</span>
             </div>
@@ -814,17 +1064,21 @@ const NewQuotation = () => {
 
           {/* ================= ROW 6 ================= */}
           <div className="col-span-full md:col-span-12 grid grid-cols-12">
-            <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1.5 text-[9px] font-bold uppercase">
+            <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1 text-[9px] font-bold uppercase">
               Cont. Assessment
             </div>
             <div className="col-span-11 border-r border-b border-black p-1.5">
               <textarea
+                data-row="header"
+                data-col="continuous_assessment"
                 rows={3}
                 className="w-full resize-none outline-none font-semibold uppercase bg-transparent no-print text-black"
                 style={{ color: 'black' }}
                 placeholder="Continuous assessment notes..."
                 value={header.continuous_assessment || ''}
                 onChange={(e) => handleHeaderChange('continuous_assessment', e.target.value)}
+                onKeyDown={(e) => handleHeaderKeyDown(e, 'continuous_assessment')}
+                onFocus={(e) => e.target.select()}
               />
               <div className="print-only whitespace-pre-wrap">{header.continuous_assessment}</div>
             </div>
@@ -882,14 +1136,18 @@ const NewQuotation = () => {
 
                         {activeRow === index && activeField === 'code' && priceSuggestions.length > 0 && (
                           <div
-                            ref={suggestionRef}
-                            className="absolute left-0 right-[-200px] mt-1 bg-white border border-black shadow-2xl z-50 max-h-60 overflow-y-auto no-print"
+                            ref={suggestionContainerRef}
+                            className="absolute left-0 right-[-200px] mt-1 bg-white border border-black shadow-2xl z-50 max-h-60 overflow-y-auto no-print scroll-smooth"
                           >
                             {priceSuggestions.map((s, i) => (
                               <div
                                 key={i}
+                                ref={el => suggestionItemRefs.current[i] = el}
                                 className={`p-2 hover:bg-yellow-50 cursor-pointer border-b border-gray-100 last:border-none ${highlightedSuggestion === i ? 'bg-yellow-100 ring-2 ring-inset ring-yellow-400' : ''}`}
-                                onClick={() => selectSuggestion(index, s)}
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  selectSuggestion(index, s);
+                                }}
                               >
                                 <div className="flex justify-between items-start gap-2">
                                   <span className="font-bold text-[10px] text-cyan-600 shrink-0">{s.code}</span>
@@ -934,14 +1192,18 @@ const NewQuotation = () => {
 
                         {activeRow === index && activeField === 'description' && priceSuggestions.length > 0 && (
                           <div
-                            ref={suggestionRef}
-                            className="absolute left-0 right-[-300px] mt-1 bg-white border border-black shadow-2xl z-50 max-h-60 overflow-y-auto no-print"
+                            ref={suggestionContainerRef}
+                            className="absolute left-0 right-[-300px] mt-1 bg-white border border-black shadow-2xl z-50 max-h-60 overflow-y-auto no-print scroll-smooth"
                           >
                             {priceSuggestions.map((s, i) => (
                               <div
                                 key={i}
+                                ref={el => suggestionItemRefs.current[i] = el}
                                 className={`p-2 hover:bg-yellow-50 cursor-pointer border-b border-gray-100 last:border-none ${highlightedSuggestion === i ? 'bg-yellow-100 ring-2 ring-inset ring-yellow-400' : ''}`}
-                                onClick={() => selectSuggestion(index, s)}
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  selectSuggestion(index, s);
+                                }}
                               >
                                 <div className="flex justify-between items-start gap-2">
                                   <span className="font-bold text-[10px] text-cyan-600 shrink-0">{s.code}</span>
@@ -1033,8 +1295,25 @@ const NewQuotation = () => {
                         />
                         <span className="print-only text-right block">{Number(item.labor || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                       </td>
-                      <td className="border border-black p-2 bg-gray-50/30 text-right">
-                        <span className="w-full block font-bold">
+                      <td
+                        className={`border border-black p-2 cursor-text transition-colors text-right tabular-nums ${activeRow === index && activeField === 'total' ? 'bg-blue-50 ring-1 ring-inset ring-blue-400' : 'bg-gray-50/20'}`}
+                        onClick={(e) => handleCellClick(e, index, 'total')}
+                      >
+                        <input
+                          data-row={index}
+                          data-col="total"
+                          type="number"
+                          className="w-full outline-none text-right bg-transparent no-print font-bold text-black"
+                          value={(Number(item.qty || 0) * Number(item.material || 0)) + Number(item.labor || 0)}
+                          onChange={(e) => handleTotalChange(item.id, e.target.value)}
+                          onFocus={(e) => {
+                            setActiveRow(index);
+                            setActiveField('total');
+                            e.target.select();
+                          }}
+                          onKeyDown={(e) => handleGridKeyDown(e, index, 'total')}
+                        />
+                        <span className="print-only text-right block font-bold text-black">
                           {((Number(item.qty || 0) * Number(item.material || 0)) + Number(item.labor || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                         </span>
                       </td>
@@ -1054,7 +1333,7 @@ const NewQuotation = () => {
                 <tr className="font-bold text-[10px] bg-gray-100 uppercase">
                   <td colSpan={4} className="border border-black text-center"></td>
                   <td className="border border-black text-right p-2">
-                    {items.reduce((sum, item) => sum + Number(item.material || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    {items.reduce((sum, item) => sum + (Number(item.qty || 0) * Number(item.material || 0)), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </td>
                   <td className="border border-black text-right p-2">
                     {items.reduce((sum, item) => sum + Number(item.labor || 0), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
@@ -1072,7 +1351,7 @@ const NewQuotation = () => {
 
           <button
             onClick={addRow}
-            className="w-full bg-gray-50 border-x border-b border-black p-1.5 text-[9px] font-bold uppercase flex items-center justify-center gap-2 hover:bg-emerald-50 hover:text-emerald-700 transition-colors no-print print:hidden"
+            className="w-full bg-gray-50 border-x border-b border-black p-1 text-[9px] font-bold uppercase flex items-center justify-center gap-2 hover:bg-emerald-50 hover:text-emerald-700 transition-colors no-print print:hidden"
           >
             <Plus size={12} /> Add Row
           </button>
@@ -1090,12 +1369,16 @@ const NewQuotation = () => {
             <div
               className={`w-full gap-2 p-1 min-h - [150px] flex flex-col ${images.length === 0 ? 'bg-gray-50' : 'bg-white'}`}
             >
-              <div className={`grid w-full h-full gap-1 ${(images.length + (images.length < 9 ? 1 : 0)) === 1 ? 'grid-cols-1 grid-rows-1' :
+              <div className={`grid w-full gap-1 max-h-[400px] overflow-auto ${(images.length + (images.length < 9 ? 1 : 0)) === 1 ? 'grid-cols-1 grid-rows-1' :
                 (images.length + (images.length < 9 ? 1 : 0)) === 2 ? 'grid-cols-2 grid-rows-1' :
                   'grid-cols-2 md:grid-cols-3'}`}>
                 {images.map((imgData, i) => (
-                  <div key={i} className="w-full h-full relative group border border-gray-300">
-                    <img src={imgData} alt={`Evidence ${i + 1}`} className="w-full h-full object-cover" />
+                  <div key={i} className="w-full aspect-square relative group border border-gray-300">
+                    <img
+                      src={imgData && imgData.startsWith('/uploads') ? `${API_BASE_URL}${imgData}` : imgData}
+                      alt={`Evidence ${i + 1}`}
+                      className="w-full h-full object-cover"
+                    />
                     <button
                       onClick={() => removeImage(i)}
                       className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity no-print"
@@ -1187,7 +1470,7 @@ const NewQuotation = () => {
                     Sub-Total
                   </td>
                   <td className="border border-black text-right p-1.5 tabular-nums">
-                    {totals.initialScopeTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    {totals.subtotalWithAdjustments.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </td>
                 </tr>
 
@@ -1218,9 +1501,9 @@ const NewQuotation = () => {
 
 
             {/* Stamp & Signature Section */}
-            <div className="border border-black h-24 mt-2 bg-white flex items-center justify-center">
+            <div className="border border-black h-50 mt-2 bg-white flex items-center justify-center">
               <div className="flex items-center justify-center gap-8 w-full h-full">
-                <img src={stamp} alt="Stamp" className="w-20 h-20 object-contain" />
+                <img src={stamp} alt="Stamp" className="w-50 h-50 object-contain" />
                 <img src={signature} alt="Signature" className="w-20 h-20 object-contain" />
               </div>
             </div>
@@ -1230,10 +1513,14 @@ const NewQuotation = () => {
               <div className="flex-1 flex items-center justify-center border-r border-black p-2 gap-2">
                 <span>Date of Completion:</span>
                 <input
+                  data-row="footer"
+                  data-col="completionDate"
                   type="date"
                   className="outline-none border-b border-black bg-gray-200 text-black text-[10px] w-32 no-print"
                   value={completionDate}
                   onChange={(e) => setCompletionDate(e.target.value)}
+                  onKeyDown={(e) => handleFooterKeyDown(e, 'completionDate')}
+                  onFocus={(e) => e.target.select()}
                 />
                 <span className="print-only">{completionDate}</span>
               </div>
@@ -1265,11 +1552,15 @@ const NewQuotation = () => {
                   Parts Warranty Period:
                 </span>
                 <input
+                  data-row="footer"
+                  data-col="warranty"
                   type="text"
                   className="flex-1 outline-none p-2 bg-gray-50 text-[9px] font-semibold no-print text-black"
                   style={{ color: 'black' }}
                   value={warranty}
                   onChange={(e) => setWarranty(e.target.value)}
+                  onKeyDown={(e) => handleFooterKeyDown(e, 'warranty')}
+                  onFocus={(e) => e.target.select()}
                 />
                 <span className="print-only flex-1 p-2 text-black">{warranty}</span>
               </div>
@@ -1283,7 +1574,9 @@ const NewQuotation = () => {
                 <div key={i} className="flex items-center mb-1">
                   <span className="w-4 text-[9px] font-bold">{i + 1}</span>
                   <input
-                    className="flex-1 p-1.5 text-[9px] font-semibold bg-gray-50 uppercase focus:bg-white transition-colors no-print text-black"
+                    data-row="exclusion"
+                    data-col={i}
+                    className="flex-1 p-1.5 text-[9px] font-semibold bg-gray-50 uppercase focus:bg-white transition-colors no-print text-black outline-none"
                     style={{ color: 'black' }}
                     value={val}
                     onChange={(e) => {
@@ -1291,6 +1584,8 @@ const NewQuotation = () => {
                       newExclusions[i] = e.target.value;
                       setExclusions(newExclusions);
                     }}
+                    onKeyDown={(e) => handleFooterKeyDown(e, 'exclusion', i)}
+                    onFocus={(e) => e.target.select()}
                   />
                   <span className="print-only flex-1 p-1.5 text-black">{val}</span>
                 </div>
@@ -1345,6 +1640,7 @@ const NewQuotation = () => {
           >
             <Save size={14} /> Save Draft
           </button>
+
           <button
             onClick={async () => {
               const job = await handleSave('SENT');
