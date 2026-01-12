@@ -96,9 +96,12 @@ export const generatePdf = async (req, res) => {
         try {
             console.log('[PDF] Waiting for selector #pdf-ready...');
             await page.waitForSelector('#pdf-ready', { timeout: 15000 });
-            // Small extra buffer
-            await new Promise(r => setTimeout(r, 1000));
         } catch (e) {
+            // If it times out, check if it's because we're on the login page
+            const content = await page.content();
+            if (content.includes('Vercel') && (content.includes('Log in') || content.includes('Deployment Protection'))) {
+                throw new Error('Access Denied: Puppeteer hit the Vercel Login wall. Please disable Vercel Authentication or add the VERCEL_PROTECTION_BYPASS secret.');
+            }
             console.error(`[PDF] Timeout waiting for #pdf-ready selector. Proceeding anyway, but PDF might be incomplete.`);
         }
 
