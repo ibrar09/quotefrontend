@@ -54,6 +54,7 @@ const NewQuotation = () => {
   const [completionDate, setCompletionDate] = useState("");
   const [warranty, setWarranty] = useState("");
   const [approval, setApproval] = useState({ prepared: '', reviewed: '', approved: '' });
+  const [highlightedSuggestion, setHighlightedSuggestion] = useState(0);
 
   // --- Store Auto-fill Logic ---
   const handleStoreLookup = async (val) => {
@@ -191,6 +192,7 @@ const NewQuotation = () => {
       const res = await axios.get(`${API_BASE_URL}/api/pricelist/search?q=${val || ''}`);
       console.log(`[SUGGEST] Found ${res.data.data?.length || 0} items`);
       setPriceSuggestions(res.data.data || []);
+      setHighlightedSuggestion(0);
     } catch (err) {
       console.error("Error fetching prices:", err);
     }
@@ -233,14 +235,40 @@ const NewQuotation = () => {
     const fields = ['code', 'description', 'unit', 'qty', 'material', 'labor'];
     const fieldIdx = fields.indexOf(field);
 
+    // Handle Suggestions Navigation if open
+    if (priceSuggestions.length > 0 && (field === 'code' || field === 'description')) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setHighlightedSuggestion(prev => (prev + 1) % priceSuggestions.length);
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setHighlightedSuggestion(prev => (prev - 1 + priceSuggestions.length) % priceSuggestions.length);
+        return;
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        selectSuggestion(index, priceSuggestions[highlightedSuggestion]);
+        return;
+      }
+    }
+
     if (e.key === 'ArrowDown' || (e.key === 'Enter' && !e.shiftKey)) {
       e.preventDefault();
       if (index === items.length - 1) {
-        addRow();
-        setTimeout(() => {
-          const nextInput = document.querySelector(`[data-row="${index + 1}"][data-col="${field}"]`);
-          nextInput?.focus();
-        }, 50);
+        // Move to transportation if reaching bottom of items
+        const nextInput = document.querySelector(`[data-row="adj"][data-col="transportation"]`);
+        if (nextInput) {
+          nextInput.focus();
+          nextInput.select();
+        } else {
+          addRow();
+          setTimeout(() => {
+            const nextInput = document.querySelector(`[data-row="${index + 1}"][data-col="${field}"]`);
+            nextInput?.focus();
+          }, 50);
+        }
       } else {
         const nextInput = document.querySelector(`[data-row="${index + 1}"][data-col="${field}"]`);
         nextInput?.focus();
@@ -269,6 +297,25 @@ const NewQuotation = () => {
           const nextInput = document.querySelector(`[data-row="${index + 1}"][data-col="code"]`);
           nextInput?.focus();
         }, 50);
+      }
+    }
+  };
+
+  const handleFooterKeyDown = (e, field) => {
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (field === 'transportation') {
+        // Move back to last item in the grid (labor column)
+        const lastInput = document.querySelector(`[data-row="${items.length - 1}"][data-col="labor"]`);
+        lastInput?.focus();
+        lastInput?.select();
+      } else if (field === 'discount') {
+        document.querySelector(`[data-row="adj"][data-col="transportation"]`)?.focus();
+      }
+    } else if (e.key === 'ArrowDown' || e.key === 'Enter') {
+      e.preventDefault();
+      if (field === 'transportation') {
+        document.querySelector(`[data-row="adj"][data-col="discount"]`)?.focus();
       }
     }
   };
@@ -841,7 +888,7 @@ const NewQuotation = () => {
                             {priceSuggestions.map((s, i) => (
                               <div
                                 key={i}
-                                className="p-2 hover:bg-yellow-50 cursor-pointer border-b border-gray-100 last:border-none"
+                                className={`p-2 hover:bg-yellow-50 cursor-pointer border-b border-gray-100 last:border-none ${highlightedSuggestion === i ? 'bg-yellow-100 ring-2 ring-inset ring-yellow-400' : ''}`}
                                 onClick={() => selectSuggestion(index, s)}
                               >
                                 <div className="flex justify-between items-start gap-2">
@@ -893,7 +940,7 @@ const NewQuotation = () => {
                             {priceSuggestions.map((s, i) => (
                               <div
                                 key={i}
-                                className="p-2 hover:bg-yellow-50 cursor-pointer border-b border-gray-100 last:border-none"
+                                className={`p-2 hover:bg-yellow-50 cursor-pointer border-b border-gray-100 last:border-none ${highlightedSuggestion === i ? 'bg-yellow-100 ring-2 ring-inset ring-yellow-400' : ''}`}
                                 onClick={() => selectSuggestion(index, s)}
                               >
                                 <div className="flex justify-between items-start gap-2">
@@ -1097,10 +1144,14 @@ const NewQuotation = () => {
                   </td>
                   <td className="border border-black p-0 bg-white">
                     <input
+                      data-row="adj"
+                      data-col="transportation"
                       type="number"
                       className="w-full p-1.5 text-right outline-none font-bold bg-transparent no-print"
                       value={adj.transportation}
                       onChange={e => setAdj({ ...adj, transportation: e.target.value })}
+                      onKeyDown={(e) => handleFooterKeyDown(e, 'transportation')}
+                      onFocus={(e) => e.target.select()}
                     />
                     <span className="print-only text-right block p-1.5">
                       {adj.transportation.toLocaleString(undefined, { minimumFractionDigits: 2 })}
@@ -1115,10 +1166,14 @@ const NewQuotation = () => {
                   </td>
                   <td className="border border-black p-0 bg-white">
                     <input
+                      data-row="adj"
+                      data-col="discount"
                       type="number"
-                      className="w-full p-1.5 text-right outline-none font-bold bg-transparent no-print"
+                      className="w-full p-1.5 text-right outline-none font-bold bg-transparent no-print text-red-600"
                       value={adj.discount}
                       onChange={e => setAdj({ ...adj, discount: e.target.value })}
+                      onKeyDown={(e) => handleFooterKeyDown(e, 'discount')}
+                      onFocus={(e) => e.target.select()}
                     />
                     <span className="print-only text-right block p-1.5">
                       {adj.discount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
