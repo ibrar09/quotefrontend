@@ -87,21 +87,30 @@ export const generatePdf = async (req, res) => {
             timeout: 60000
         });
 
-        // Check for 401 or 403 (Vercel login wall)
+        // 🔹 1. Check for 401/403 (Standard Vercel block)
         if (response && (response.status() === 401 || response.status() === 403)) {
-            throw new Error(`Access Denied (Status ${response.status()}). This deployment might be protected by Vercel Authentication.`);
+            throw new Error(`Access Denied (Status ${response.status()}). This Vercel deployment is private. Please disable "Deployment Protection" in Vercel Settings -> Security.`);
         }
 
-        // Wait for React to finish rendering
+        // 🔹 2. Broad Content Check for Vercel Login Wall
+        const content = await page.content();
+        const contentLower = content.toLowerCase();
+        const isVercelWall =
+            contentLower.includes('vercel.com') ||
+            contentLower.includes('deployment protection') ||
+            contentLower.includes('vercel_protection_bypass') ||
+            content.includes('▲') || // Vercel logo ASCII
+            (contentLower.includes('log in') && contentLower.includes('vercel'));
+
+        if (isVercelWall && !contentLower.includes('quotation')) {
+            throw new Error('Access Denied: Puppeteer hit the Vercel Login wall. You MUST disable "Deployment Protection" in your Vercel Dashboard for this to work.');
+        }
+
+        // 🔹 3. Wait for React to finish rendering
         try {
             console.log('[PDF] Waiting for selector #pdf-ready...');
             await page.waitForSelector('#pdf-ready', { timeout: 15000 });
         } catch (e) {
-            // If it times out, check if it's because we're on the login page
-            const content = await page.content();
-            if (content.includes('Vercel') && (content.includes('Log in') || content.includes('Deployment Protection'))) {
-                throw new Error('Access Denied: Puppeteer hit the Vercel Login wall. Please disable Vercel Authentication or add the VERCEL_PROTECTION_BYPASS secret.');
-            }
             console.error(`[PDF] Timeout waiting for #pdf-ready selector. Proceeding anyway, but PDF might be incomplete.`);
         }
 
