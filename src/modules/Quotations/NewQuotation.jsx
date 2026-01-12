@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Camera, X, Save, ArrowRight, Search, Loader2, CheckCircle2, AlertCircle, Trash2, Plus, Printer, Download, Upload } from 'lucide-react';
 import axios from 'axios';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -216,6 +217,97 @@ const NewQuotation = () => {
     setPriceSuggestions([]);
     setActiveRow(null);
     setActiveField(null);
+
+    // After selecting, move focus to the description field of the same row (or material)
+    setTimeout(() => {
+      const nextInput = document.querySelector(`[data-row="${index}"][data-col="qty"]`);
+      if (nextInput) {
+        nextInput.focus();
+        nextInput.select();
+      }
+    }, 10);
+  };
+
+  // --- Excel-like Navigation & Paste ---
+  const handleGridKeyDown = (e, index, field) => {
+    const fields = ['code', 'description', 'unit', 'qty', 'material', 'labor'];
+    const fieldIdx = fields.indexOf(field);
+
+    if (e.key === 'ArrowDown' || (e.key === 'Enter' && !e.shiftKey)) {
+      e.preventDefault();
+      if (index === items.length - 1) {
+        addRow();
+        setTimeout(() => {
+          const nextInput = document.querySelector(`[data-row="${index + 1}"][data-col="${field}"]`);
+          nextInput?.focus();
+        }, 50);
+      } else {
+        const nextInput = document.querySelector(`[data-row="${index + 1}"][data-col="${field}"]`);
+        nextInput?.focus();
+      }
+    } else if (e.key === 'ArrowUp' || (e.key === 'Enter' && e.shiftKey)) {
+      e.preventDefault();
+      const prevInput = document.querySelector(`[data-row="${index - 1}"][data-col="${field}"]`);
+      prevInput?.focus();
+    } else if (e.key === 'ArrowRight' && (e.target.selectionEnd === e.target.value.length || e.target.type === 'number')) {
+      if (fieldIdx < fields.length - 1) {
+        e.preventDefault();
+        const nextInput = document.querySelector(`[data-row="${index}"][data-col="${fields[fieldIdx + 1]}"]`);
+        nextInput?.focus();
+      }
+    } else if (e.key === 'ArrowLeft' && (e.target.selectionStart === 0 || e.target.type === 'number')) {
+      if (fieldIdx > 0) {
+        e.preventDefault();
+        const prevInput = document.querySelector(`[data-row="${index}"][data-col="${fields[fieldIdx - 1]}"]`);
+        prevInput?.focus();
+      }
+    } else if (e.key === 'Tab') {
+      if (index === items.length - 1 && field === 'labor') {
+        e.preventDefault();
+        addRow();
+        setTimeout(() => {
+          const nextInput = document.querySelector(`[data-row="${index + 1}"][data-col="code"]`);
+          nextInput?.focus();
+        }, 50);
+      }
+    }
+  };
+
+  const handleGridPaste = (e) => {
+    const pasteData = e.clipboardData.getData('text');
+    if (!pasteData.includes('\t') && !pasteData.includes('\n')) return; // Regular paste
+
+    e.preventDefault();
+    const rows = pasteData.split(/\r?\n/).filter(line => line.trim() !== '');
+    const newItemsData = rows.map(row => {
+      const cols = row.split('\t');
+      return {
+        id: crypto.randomUUID(),
+        code: cols[0] || '',
+        description: cols[1] || '',
+        unit: cols[2] || 'PCS',
+        qty: Number(cols[3]) || 1,
+        material: Number(cols[4]) || 0,
+        labor: Number(cols[5]) || 0
+      };
+    });
+
+    if (newItemsData.length > 0) {
+      // If we only have one empty row, replace it. Otherwise append.
+      if (items.length === 1 && !items[0].code && !items[0].description) {
+        setItems(newItemsData);
+      } else {
+        setItems([...items, ...newItemsData]);
+      }
+    }
+  };
+
+  const handleCellClick = (e, rowIdx, colName) => {
+    // Force focus on the input if user clicks the TD background
+    if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+      const input = e.currentTarget.querySelector('input, textarea');
+      input?.focus();
+    }
   };
 
   // --- Calculations ---
@@ -696,7 +788,7 @@ const NewQuotation = () => {
 
 
         {/* Items Table-Using relative and overflow-visible for suggestions */}
-        <div className="relative z-30">
+        <div className="relative z-30" onPaste={handleGridPaste}>
           <div className="overflow-visible">
             <table className="w-full border-collapse border border-black text-[10px]">
               <thead>
@@ -711,132 +803,205 @@ const NewQuotation = () => {
                   <th className="border border-black w-8 print:hidden"></th>
                 </tr>
               </thead>
-              <tbody>
-                {items.map((item, index) => (
-                  <tr key={item.id} className="align-top leading-tight uppercase font-semibold text-[10px]">
-                    <td className="border border-black p-2 relative">
-                      <input
-                        className="w-full outline-none text-center bg-transparent no-print"
-                        value={item.code}
-                        onChange={(e) => handleItemSearch(index, 'code', e.target.value)}
-                        onFocus={(e) => handleFocus(index, 'code', e.target.value)}
-                      />
-                      <span className="print-only text-center block">{item.code}</span>
-
-                      {activeRow === index && activeField === 'code' && priceSuggestions.length > 0 && (
-                        <div
-                          ref={suggestionRef}
-                          className="absolute left-0 right-[-200px] mt-1 bg-white border border-black shadow-2xl z-50 max-h-60 overflow-y-auto no-print"
-                        >
-                          {priceSuggestions.map((s, i) => (
-                            <div
-                              key={i}
-                              className="p-2 hover:bg-yellow-50 cursor-pointer border-b border-gray-100 last:border-none"
-                              onClick={() => selectSuggestion(index, s)}
-                            >
-                              <div className="flex justify-between items-start gap-2">
-                                <span className="font-bold text-[10px] text-cyan-600 shrink-0">{s.code}</span>
-                                <span className="px-1.5 py-0.5 rounded-md text-[8px] font-bold bg-blue-50 text-blue-500 uppercase">{s.type || 'Standard'}</span>
-                                <span className="text-right text-[9px] font-bold text-gray-500 ml-auto">{Number(s.material_price) + Number(s.labor_price)} SAR</span>
-                              </div>
-                              <div className="text-[9px] text-gray-700 leading-tight mt-1 truncate">{s.description}</div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </td>
-                    <td className="border border-black p-2 relative">
-                      <textarea
-                        className="w-full outline-none resize-none min-h-[40px] bg-transparent no-print text-black font-semibold overflow-hidden"
-                        value={item.description}
-                        rows={1}
-                        onInput={(e) => {
-                          e.target.style.height = 'auto';
-                          e.target.style.height = e.target.scrollHeight + 'px';
-                        }}
-                        ref={(el) => {
-                          if (el) {
-                            el.style.height = 'auto';
-                            el.style.height = el.scrollHeight + 'px';
-                          }
-                        }}
-                        onChange={(e) => handleItemSearch(index, 'description', e.target.value)}
-                        onFocus={(e) => handleFocus(index, 'description', e.target.value)}
-                      />
-                      <div className="print-only min-h-[40px] text-black font-semibold whitespace-pre-wrap">{item.description}</div>
-
-                      {activeRow === index && activeField === 'description' && priceSuggestions.length > 0 && (
-                        <div
-                          ref={suggestionRef}
-                          className="absolute left-0 right-[-300px] mt-1 bg-white border border-black shadow-2xl z-50 max-h-60 overflow-y-auto no-print"
-                        >
-                          {priceSuggestions.map((s, i) => (
-                            <div
-                              key={i}
-                              className="p-2 hover:bg-yellow-50 cursor-pointer border-b border-gray-100 last:border-none"
-                              onClick={() => selectSuggestion(index, s)}
-                            >
-                              <div className="flex justify-between items-start gap-2">
-                                <span className="font-bold text-[10px] text-cyan-600 shrink-0">{s.code}</span>
-                                <span className="px-1.5 py-0.5 rounded-md text-[8px] font-bold bg-blue-50 text-blue-500 uppercase">{s.type || 'Standard'}</span>
-                                <span className="text-right text-[9px] font-bold text-gray-500 ml-auto">{Number(s.material_price) + Number(s.labor_price)} SAR</span>
-                              </div>
-                              <div className="text-[9px] text-gray-700 leading-tight mt-1 truncate">{s.description}</div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </td>
-                    <td className="border border-black p-2">
-                      <input
-                        className="w-full outline-none text-center bg-transparent no-print"
-                        value={item.unit}
-                        onChange={(e) => handleItemChange(item.id, 'unit', e.target.value)}
-                      />
-                      <span className="print-only text-center block">{item.unit}</span>
-                    </td>
-                    <td className="border border-black p-2">
-                      <input
-                        type="number"
-                        className="w-full outline-none text-center bg-transparent no-print text-black font-semibold"
-                        value={item.qty}
-                        onChange={(e) => handleItemChange(item.id, 'qty', e.target.value)}
-                      />
-                      <span className="print-only text-center block text-black font-semibold">{item.qty}</span>
-                    </td>
-                    <td className="border border-black p-2">
-                      <input
-                        type="number"
-                        className="w-full outline-none text-right bg-transparent no-print"
-                        value={item.material}
-                        onChange={(e) => handleItemChange(item.id, 'material', e.target.value)}
-                      />
-                      <span className="print-only text-right block">{Number(item.material || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                    </td>
-                    <td className="border border-black p-2">
-                      <input
-                        type="number"
-                        className="w-full outline-none text-right bg-transparent no-print"
-                        value={item.labor}
-                        onChange={(e) => handleItemChange(item.id, 'labor', e.target.value)}
-                      />
-                      <span className="print-only text-right block">{Number(item.labor || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                    </td>
-                    <td className="border border-black p-2 bg-gray-50/30 text-right">
-                      <span className="w-full block font-bold">
-                        {((Number(item.qty || 0) * Number(item.material || 0)) + Number(item.labor || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                      </span>
-                    </td>
-                    <td className="border border-black text-center print:hidden">
-                      <button
-                        onClick={() => removeRow(item.id)}
-                        className="p-1 text-gray-400 hover:text-red-500 transition-colors no-print"
+              <tbody className="relative">
+                <AnimatePresence initial={false}>
+                  {items.map((item, index) => (
+                    <motion.tr
+                      key={item.id}
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, x: -10 }}
+                      transition={{ duration: 0.15 }}
+                      className={`align-top leading-tight uppercase font-semibold text-[10px] group/row ${activeRow === index ? 'bg-blue-50/20' : ''}`}
+                    >
+                      <td
+                        className={`border border-black p-2 relative cursor-text transition-colors ${activeRow === index && activeField === 'code' ? 'bg-blue-50 ring-1 ring-inset ring-blue-400' : ''}`}
+                        onClick={(e) => handleCellClick(e, index, 'code')}
                       >
-                        <Trash2 size={12} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                        <input
+                          data-row={index}
+                          data-col="code"
+                          className="w-full outline-none text-center bg-transparent no-print placeholder:opacity-30"
+                          placeholder="Code"
+                          value={item.code}
+                          onChange={(e) => handleItemSearch(index, 'code', e.target.value)}
+                          onFocus={(e) => {
+                            handleFocus(index, 'code', e.target.value);
+                            e.target.select();
+                          }}
+                          onKeyDown={(e) => handleGridKeyDown(e, index, 'code')}
+                        />
+                        <span className="print-only text-center block">{item.code}</span>
+
+                        {activeRow === index && activeField === 'code' && priceSuggestions.length > 0 && (
+                          <div
+                            ref={suggestionRef}
+                            className="absolute left-0 right-[-200px] mt-1 bg-white border border-black shadow-2xl z-50 max-h-60 overflow-y-auto no-print"
+                          >
+                            {priceSuggestions.map((s, i) => (
+                              <div
+                                key={i}
+                                className="p-2 hover:bg-yellow-50 cursor-pointer border-b border-gray-100 last:border-none"
+                                onClick={() => selectSuggestion(index, s)}
+                              >
+                                <div className="flex justify-between items-start gap-2">
+                                  <span className="font-bold text-[10px] text-cyan-600 shrink-0">{s.code}</span>
+                                  <span className="px-1.5 py-0.5 rounded-md text-[8px] font-bold bg-blue-50 text-blue-500 uppercase">{s.type || 'Standard'}</span>
+                                  <span className="text-right text-[9px] font-bold text-gray-500 ml-auto">{Number(s.material_price) + Number(s.labor_price)} SAR</span>
+                                </div>
+                                <div className="text-[9px] text-gray-700 leading-tight mt-1 truncate">{s.description}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+                      <td
+                        className={`border border-black p-2 relative cursor-text transition-colors ${activeRow === index && activeField === 'description' ? 'bg-blue-50 ring-1 ring-inset ring-blue-400' : ''}`}
+                        onClick={(e) => handleCellClick(e, index, 'description')}
+                      >
+                        <textarea
+                          data-row={index}
+                          data-col="description"
+                          className="w-full outline-none resize-none min-h-[40px] bg-transparent no-print text-black font-semibold overflow-hidden placeholder:opacity-30"
+                          placeholder="Item Description..."
+                          value={item.description}
+                          rows={1}
+                          onInput={(e) => {
+                            e.target.style.height = 'auto';
+                            e.target.style.height = e.target.scrollHeight + 'px';
+                          }}
+                          ref={(el) => {
+                            if (el) {
+                              el.style.height = 'auto';
+                              el.style.height = el.scrollHeight + 'px';
+                            }
+                          }}
+                          onChange={(e) => handleItemSearch(index, 'description', e.target.value)}
+                          onFocus={(e) => {
+                            handleFocus(index, 'description', e.target.value);
+                            e.target.select();
+                          }}
+                          onKeyDown={(e) => handleGridKeyDown(e, index, 'description')}
+                        />
+                        <div className="print-only min-h-[40px] text-black font-semibold whitespace-pre-wrap">{item.description}</div>
+
+                        {activeRow === index && activeField === 'description' && priceSuggestions.length > 0 && (
+                          <div
+                            ref={suggestionRef}
+                            className="absolute left-0 right-[-300px] mt-1 bg-white border border-black shadow-2xl z-50 max-h-60 overflow-y-auto no-print"
+                          >
+                            {priceSuggestions.map((s, i) => (
+                              <div
+                                key={i}
+                                className="p-2 hover:bg-yellow-50 cursor-pointer border-b border-gray-100 last:border-none"
+                                onClick={() => selectSuggestion(index, s)}
+                              >
+                                <div className="flex justify-between items-start gap-2">
+                                  <span className="font-bold text-[10px] text-cyan-600 shrink-0">{s.code}</span>
+                                  <span className="px-1.5 py-0.5 rounded-md text-[8px] font-bold bg-blue-50 text-blue-500 uppercase">{s.type || 'Standard'}</span>
+                                  <span className="text-right text-[9px] font-bold text-gray-500 ml-auto">{Number(s.material_price) + Number(s.labor_price)} SAR</span>
+                                </div>
+                                <div className="text-[9px] text-gray-700 leading-tight mt-1 truncate">{s.description}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+                      <td
+                        className={`border border-black p-2 cursor-text transition-colors ${activeRow === index && activeField === 'unit' ? 'bg-blue-50 ring-1 ring-inset ring-blue-400' : ''}`}
+                        onClick={(e) => handleCellClick(e, index, 'unit')}
+                      >
+                        <input
+                          data-row={index}
+                          data-col="unit"
+                          className="w-full outline-none text-center bg-transparent no-print font-bold uppercase"
+                          value={item.unit}
+                          onChange={(e) => handleItemChange(item.id, 'unit', e.target.value)}
+                          onFocus={(e) => {
+                            setActiveRow(index);
+                            setActiveField('unit');
+                            e.target.select();
+                          }}
+                          onKeyDown={(e) => handleGridKeyDown(e, index, 'unit')}
+                        />
+                        <span className="print-only text-center block">{item.unit}</span>
+                      </td>
+                      <td
+                        className={`border border-black p-2 cursor-text transition-colors ${activeRow === index && activeField === 'qty' ? 'bg-blue-50 ring-1 ring-inset ring-blue-400' : ''}`}
+                        onClick={(e) => handleCellClick(e, index, 'qty')}
+                      >
+                        <input
+                          data-row={index}
+                          data-col="qty"
+                          type="number"
+                          className="w-full outline-none text-center bg-transparent no-print text-black font-bold"
+                          value={item.qty}
+                          onChange={(e) => handleItemChange(item.id, 'qty', e.target.value)}
+                          onFocus={(e) => {
+                            setActiveRow(index);
+                            setActiveField('qty');
+                            e.target.select();
+                          }}
+                          onKeyDown={(e) => handleGridKeyDown(e, index, 'qty')}
+                        />
+                        <span className="print-only text-center block text-black font-semibold">{item.qty}</span>
+                      </td>
+                      <td
+                        className={`border border-black p-2 cursor-text transition-colors ${activeRow === index && activeField === 'material' ? 'bg-blue-50 ring-1 ring-inset ring-blue-400' : ''}`}
+                        onClick={(e) => handleCellClick(e, index, 'material')}
+                      >
+                        <input
+                          data-row={index}
+                          data-col="material"
+                          type="number"
+                          className="w-full outline-none text-right bg-transparent no-print font-bold"
+                          value={item.material}
+                          onChange={(e) => handleItemChange(item.id, 'material', e.target.value)}
+                          onFocus={(e) => {
+                            setActiveRow(index);
+                            setActiveField('material');
+                            e.target.select();
+                          }}
+                          onKeyDown={(e) => handleGridKeyDown(e, index, 'material')}
+                        />
+                        <span className="print-only text-right block">{Number(item.material || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                      </td>
+                      <td
+                        className={`border border-black p-2 cursor-text transition-colors ${activeRow === index && activeField === 'labor' ? 'bg-blue-50 ring-1 ring-inset ring-blue-400' : ''}`}
+                        onClick={(e) => handleCellClick(e, index, 'labor')}
+                      >
+                        <input
+                          data-row={index}
+                          data-col="labor"
+                          type="number"
+                          className="w-full outline-none text-right bg-transparent no-print font-bold"
+                          value={item.labor}
+                          onChange={(e) => handleItemChange(item.id, 'labor', e.target.value)}
+                          onFocus={(e) => {
+                            setActiveRow(index);
+                            setActiveField('labor');
+                            e.target.select();
+                          }}
+                          onKeyDown={(e) => handleGridKeyDown(e, index, 'labor')}
+                        />
+                        <span className="print-only text-right block">{Number(item.labor || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                      </td>
+                      <td className="border border-black p-2 bg-gray-50/30 text-right">
+                        <span className="w-full block font-bold">
+                          {((Number(item.qty || 0) * Number(item.material || 0)) + Number(item.labor || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </span>
+                      </td>
+                      <td className="border border-black text-center print:hidden">
+                        <button
+                          onClick={() => removeRow(item.id)}
+                          className="p-1 text-gray-300 hover:text-red-500 transition-colors no-print"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </td>
+                    </motion.tr>
+                  ))}
+                </AnimatePresence>
 
                 {/* Totals Row */}
                 <tr className="font-bold text-[10px] bg-gray-100 uppercase">
