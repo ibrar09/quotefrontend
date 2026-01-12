@@ -159,3 +159,32 @@ export const listIntakes = async (req, res) => {
     });
   }
 };
+
+/**
+ * 🔹 UPLOAD IMAGES FOR QUOTATION
+ * POST /api/quotations/:id/images
+ */
+export const uploadQuotationImages = async (req, res) => {
+  try {
+    const jobId = req.params.id;
+    const files = req.files;
+
+    if (!files || files.length === 0) {
+      return res.status(400).json({ success: false, message: 'No images uploaded' });
+    }
+
+    const images = await quotationService.uploadImages(jobId, files);
+
+    res.status(200).json({
+      success: true,
+      message: `${files.length} images uploaded successfully`,
+      data: images
+    });
+  } catch (error) {
+    console.error('Upload Images Error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};

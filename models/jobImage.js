@@ -8,6 +8,9 @@ const JobImage = sequelize.define('JobImage', {
         references: { model: 'jobs', key: 'id' }
     },
     image_data: { type: DataTypes.TEXT }, // Storing Base64 for now
+    file_path: { type: DataTypes.TEXT },
+    file_name: { type: DataTypes.STRING },
+    original_name: { type: DataTypes.STRING }
 }, {
     tableName: 'job_images',
     timestamps: true

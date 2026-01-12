@@ -6,12 +6,15 @@ import {
   getQuotationById,
   listQuotations,
   listIntakes,
-  searchQuotations
+  searchQuotations,
+  uploadQuotationImages
 } from '../controllers/quotation.controller.js';
+import { upload } from '../middlewares/upload.middleware.js';
 
 const router = express.Router();
 
 router.post('/', createQuotation);
+router.post('/:id/images', upload.array('images'), uploadQuotationImages);
 router.get('/search', searchQuotations);
 router.get('/intakes', listIntakes);
 router.get('/', listQuotations);
