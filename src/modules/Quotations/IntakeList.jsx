@@ -38,7 +38,7 @@ const IntakeList = () => {
     };
 
     const handleEdit = (row) => {
-        navigate(`/intakes/edit/${row.id}`, { state: row });
+        navigate('/quotations/new', { state: { editIntake: row } });
     };
 
     const handleMakeQuotation = (row) => {

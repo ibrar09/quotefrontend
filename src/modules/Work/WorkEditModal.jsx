@@ -14,8 +14,8 @@ const Input = ({ label, value, onChange, type = "text", placeholder = "", darkMo
             onChange={e => onChange(e.target.value)}
             placeholder={placeholder}
             className={`border-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-all focus:outline-none focus:ring-4 ${darkMode
-                    ? "bg-gray-800 border-gray-700 text-white focus:ring-cyan-500/20 focus:border-cyan-500"
-                    : "bg-gray-50 border-gray-200 text-gray-900 focus:ring-yellow-500/20 focus:border-yellow-500"
+                ? "bg-gray-800 border-gray-700 text-white focus:ring-cyan-500/20 focus:border-cyan-500"
+                : "bg-gray-50 border-gray-200 text-gray-900 focus:ring-yellow-500/20 focus:border-yellow-500"
                 }`}
         />
     </div>
@@ -43,6 +43,8 @@ const WorkEditModal = ({ quotation, onClose, onUpdated }) => {
                 }
             } catch (err) {
                 console.error("Failed to fetch details", err);
+                alert("Failed to load details. Closing modal.");
+                onClose();
             } finally {
                 setLoading(false);
             }
@@ -114,8 +116,8 @@ const WorkEditModal = ({ quotation, onClose, onUpdated }) => {
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={`flex items-center gap-2 px-6 py-3 text-xs font-black uppercase rounded-t-2xl transition-all border-b-4 ${activeTab === tab.id
-                                    ? (darkMode ? "bg-cyan-500/10 border-cyan-500 text-cyan-400" : "bg-yellow-400/10 border-yellow-400 text-yellow-600")
-                                    : "border-transparent text-gray-400"
+                                ? (darkMode ? "bg-cyan-500/10 border-cyan-500 text-cyan-400" : "bg-yellow-400/10 border-yellow-400 text-yellow-600")
+                                : "border-transparent text-gray-400"
                                 }`}
                         >
                             {tab.icon} {tab.label}
