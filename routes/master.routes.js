@@ -7,7 +7,7 @@ import db from '../models/index.js';
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
-const { Store, PriceList, sequelize } = db;
+const { Store, PriceList, Job, PurchaseOrder, Finance, sequelize } = db;
 
 // Helper to clean price strings (e.g., "$1,200.50" -> 1200.50)
 const parsePrice = (val) => {
@@ -260,6 +260,151 @@ router.post('/upload-pricelist', upload.single('file'), async (req, res) => {
     } catch (error) {
         console.error('❌ [PRICELIST] Sync Error:', error);
         res.status(500).json({ error: 'Sync failed: ' + error.message });
+    }
+});
+
+// 3. UPLOAD HISTORICAL QUOTATIONS
+router.post('/upload-quotations', upload.single('file'), async (req, res) => {
+    console.log('🚀 [QUOTATIONS] Bulk upload request received');
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+    try {
+        const results = await parseCSVBuffer(req.file.buffer);
+        console.log(`📊 [QUOTATIONS] Received CSV: ${results.length} rows.`);
+
+        if (results.length === 0) return res.json({ message: 'CSV is empty' });
+
+        const aliases = {
+            quote_no: ['q_#', 'quote_no', 'quotation_no', 'quote_#'],
+            sent_at: ['q_date', 'quotation_date', 'sent_date', 'date'],
+            mr_date: ['mr_date', 'mr_date'],
+            mr_no: ['mr_#', 'mr_no'],
+            pr_no: ['pr_#', 'pr_no'],
+            brand_name: ['brand', 'company', 'brand_name'],
+            location: ['location', 'mall', 'site'],
+            city: ['city'],
+            region: ['region'],
+            work_description: ['work_description', 'description', 'work_desc'],
+            work_status: ['work_status', 'status'],
+            completion_date: ['completion_date', 'comp_date'],
+            completed_by: ['completed_by', 'by'],
+            po_no: ['po_#', 'po_no', 'po_number'],
+            po_date: ['po_date'],
+            eta: ['eta'],
+            update_notes: ['update'],
+            craftsperson_notes: ['craftsperson_notes', 'craft_person_notes'],
+            subtotal: ['amount_before_discount', 'amount_ex_vat', 'subtotal'],
+            discount: ['discount'],
+            vat_amount: ['vat_15', 'vat_amount', 'vat'],
+            grand_total: ['amount_inc_vat', 'grand_total', 'total'],
+            check_in_date: ['date_of_check_in', 'check_in_date'],
+            check_in_time: ['time_of_check_in', 'check_in_time'],
+            supervisor: ['supervisor'],
+            oracle_ccid: ['ccid', 'oracle_ccid', 'store_id'],
+            store_opening_date: ['store_opening_date'],
+            comments: ['comments', 'comment'],
+            invoice_no: ['invoice_no', 'invoice_#'],
+            payment_month: ['month', 'payment_month'],
+            received_amount: ['received_amount', 'recv_amt'],
+            payment_date: ['payment_date'],
+            general_ref: ['ref_#', 'reference']
+        };
+
+        let headerIndex = -1;
+        for (let i = 0; i < Math.min(results.length, 30); i++) {
+            const row = results[i].map(v => cleanHeader(v));
+            if (aliases.quote_no.some(a => row.includes(cleanHeader(a)))) {
+                headerIndex = i;
+                break;
+            }
+        }
+
+        if (headerIndex === -1) {
+            return res.status(400).json({ error: 'Could not find header row (Q #) in CSV' });
+        }
+
+        const headers = results[headerIndex].map(h => String(h).trim());
+        const dataRows = results.slice(headerIndex + 1);
+
+        let successCount = 0;
+        const transaction = await sequelize.transaction();
+
+        try {
+            for (const row of dataRows) {
+                const quote_no = getRowValue(row, headers, aliases.quote_no);
+                if (!quote_no) continue;
+
+                // 1. UPSERT JOB (Quotation)
+                const [job] = await Job.upsert({
+                    quote_no,
+                    sent_at: parseDate(getRowValue(row, headers, aliases.sent_at)),
+                    mr_date: parseDate(getRowValue(row, headers, aliases.mr_date)),
+                    mr_no: getRowValue(row, headers, aliases.mr_no),
+                    pr_no: getRowValue(row, headers, aliases.pr_no),
+                    oracle_ccid: getRowValue(row, headers, aliases.oracle_ccid),
+                    brand_name: getRowValue(row, headers, aliases.brand_name),
+                    brand: getRowValue(row, headers, aliases.brand_name),
+                    location: getRowValue(row, headers, aliases.location),
+                    city: getRowValue(row, headers, aliases.city),
+                    region: getRowValue(row, headers, aliases.region),
+                    work_description: getRowValue(row, headers, aliases.work_description),
+                    work_status: 'DONE', // default for historical
+                    quote_status: 'APPROVED', // default for historical
+                    completion_date: parseDate(getRowValue(row, headers, aliases.completion_date)),
+                    completed_by: getRowValue(row, headers, aliases.completed_by),
+                    supervisor: getRowValue(row, headers, aliases.supervisor),
+                    subtotal: parsePrice(getRowValue(row, headers, aliases.subtotal)),
+                    discount: parsePrice(getRowValue(row, headers, aliases.discount)),
+                    vat_amount: parsePrice(getRowValue(row, headers, aliases.vat_amount)),
+                    grand_total: parsePrice(getRowValue(row, headers, aliases.grand_total)),
+                    craftsperson_notes: getRowValue(row, headers, aliases.craftsperson_notes),
+                    check_in_date: parseDate(getRowValue(row, headers, aliases.check_in_date)),
+                    check_in_time: getRowValue(row, headers, aliases.check_in_time),
+                    store_opening_date: parseDate(getRowValue(row, headers, aliases.store_opening_date)),
+                    comments: getRowValue(row, headers, aliases.comments)
+                }, { transaction });
+
+                // 2. UPSERT PO
+                const po_no = getRowValue(row, headers, aliases.po_no);
+                if (po_no) {
+                    await PurchaseOrder.upsert({
+                        po_no,
+                        job_id: job.id,
+                        po_date: parseDate(getRowValue(row, headers, aliases.po_date)),
+                        eta: parseDate(getRowValue(row, headers, aliases.eta)),
+                        update_notes: getRowValue(row, headers, aliases.update_notes),
+                        amount_ex_vat: parsePrice(getRowValue(row, headers, aliases.subtotal)),
+                        vat_15: parsePrice(getRowValue(row, headers, aliases.vat_amount)),
+                        total_inc_vat: parsePrice(getRowValue(row, headers, aliases.grand_total))
+                    }, { transaction });
+
+                    // 3. UPSERT FINANCE
+                    const invoice_no = getRowValue(row, headers, aliases.invoice_no);
+                    if (invoice_no) {
+                        await Finance.upsert({
+                            invoice_no,
+                            po_no,
+                            payment_month: getRowValue(row, headers, aliases.payment_month),
+                            received_amount: parsePrice(getRowValue(row, headers, aliases.received_amount)),
+                            payment_date: parseDate(getRowValue(row, headers, aliases.payment_date)),
+                            general_ref: getRowValue(row, headers, aliases.general_ref),
+                            invoice_status: 'PAID'
+                        }, { transaction });
+                    }
+                }
+                successCount++;
+            }
+
+            await transaction.commit();
+            res.json({ message: `Successfully imported ${successCount} quotations.`, count: successCount });
+        } catch (err) {
+            await transaction.rollback();
+            throw err;
+        }
+
+    } catch (error) {
+        console.error('❌ [QUOTATIONS] Bulk Upload Error:', error);
+        res.status(500).json({ error: 'Upload failed: ' + error.message });
     }
 });
 

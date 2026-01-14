@@ -118,7 +118,7 @@ export const generatePdf = async (req, res) => {
         const pdfBuffer = await page.pdf({
             format: 'A4',
             printBackground: true,
-            margin: { top: '0px', bottom: '0px', left: '0px', right: '0px' },
+            // margin: { top: '0px', bottom: '0px', left: '0px', right: '0px' }, // REMOVED: Let CSS handle margins
             preferCSSPageSize: true
         });
 

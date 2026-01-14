@@ -1,6 +1,6 @@
 import priceListService from '../services/pricelist.service.js';
 import { Op } from 'sequelize';
-import { PriceList } from '../models/index.js';
+import { PriceList, CustomPriceList } from '../models/index.js';
 
 export const createPriceItem = async (req, res) => {
   try {
@@ -54,15 +54,31 @@ export const deletePriceItem = async (req, res) => {
 export const searchPriceLists = async (req, res) => {
   try {
     const { q } = req.query;
-    const items = await PriceList.findAll({
+    // 1. Search Standard Price List
+    const standardItems = await PriceList.findAll({
       where: {
         [Op.or]: [
           { code: { [Op.iLike]: `%${q}%` } },
           { description: { [Op.iLike]: `%${q}%` } }
         ]
       },
-      limit: 20
+      limit: 15
     });
+
+    // 2. Search Custom Price List
+    const customItems = await CustomPriceList.findAll({
+      where: {
+        [Op.or]: [
+          { code: { [Op.iLike]: `%${q}%` } },
+          { description: { [Op.iLike]: `%${q}%` } }
+        ]
+      },
+      limit: 15
+    });
+
+    // 3. Merge results (Custom items first? or just mix them)
+    // Tagging them to know the source might be helpful but frontend just needs standard fields
+    const items = [...customItems, ...standardItems];
 
     res.status(200).json({ success: true, data: items });
   } catch (err) {

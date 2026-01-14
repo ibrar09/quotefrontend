@@ -1,5 +1,5 @@
 import * as storeService from '../services/storeService.js';
-import { Job, JobItem, PriceList } from '../models/index.js';
+import { Job, JobItem, PriceList, CustomStore } from '../models/index.js';
 
 // Create a new store
 export const createStore = async (req, res) => {
@@ -26,8 +26,14 @@ export const getStore = async (req, res) => {
   try {
     const ccid = req.params.ccid;
 
-    // 1️⃣ Fetch store
-    const store = await storeService.getStoreByCCID(ccid);
+    // 1️⃣ Fetch store from Master List
+    let store = await storeService.getStoreByCCID(ccid);
+
+    // 1b. If not in Master, check Custom Stores
+    if (!store) {
+      store = await CustomStore.findByPk(ccid);
+    }
+
     if (!store) {
       return res.status(404).json({ success: false, message: 'Invalid CCID / Store not found' });
     }

@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import apiRouter from './routes/index.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { startNotificationCron } from './cron/notification.cron.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -71,4 +72,7 @@ app.listen(PORT, () => {
     console.log(`   QUOTATIONS SYSTEM STARTING...          `);
     console.log(`   SERVER RUNNING ON PORT: ${PORT}        `);
     console.log(`==========================================`);
+
+    // Start notification cron job
+    startNotificationCron();
 });

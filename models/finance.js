@@ -40,6 +40,7 @@ const Finance = sequelize.define('Finance', {
   company_bank_ref: { type: DataTypes.STRING },
   payment_status: { type: DataTypes.STRING },
   bank_date: { type: DataTypes.DATEONLY },
+  general_ref: { type: DataTypes.STRING },
   days_outstanding: { type: DataTypes.INTEGER, defaultValue: 0 }
 }, {
   tableName: 'finance_records',

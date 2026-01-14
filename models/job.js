@@ -41,7 +41,8 @@ const Job = sequelize.define('Job', {
       'SENT',
       'REVISED',
       'APPROVED',
-      'REJECTED'
+      'REJECTED',
+      'COMPLETED'
     ),
     defaultValue: 'INTAKE'
   },
@@ -72,7 +73,10 @@ const Job = sequelize.define('Job', {
   completion_date: { type: DataTypes.DATEONLY },
   completed_by: { type: DataTypes.STRING },
   supervisor: { type: DataTypes.STRING },
-  comments: { type: DataTypes.TEXT }, // Added comments field
+  comments: { type: DataTypes.TEXT },
+  craftsperson_notes: { type: DataTypes.TEXT },
+  check_in_date: { type: DataTypes.DATEONLY },
+  check_in_time: { type: DataTypes.STRING },
 
 }, {
   tableName: 'jobs',
