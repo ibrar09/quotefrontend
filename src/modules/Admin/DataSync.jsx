@@ -4,8 +4,8 @@ import API_BASE_URL from '../../config/api';
 import { useTheme } from '../../context/ThemeContext';
 
 const DataSync = () => {
-    const [uploading, setUploading] = useState({ stores: false, pricelist: false });
-    const [status, setStatus] = useState({ stores: null, pricelist: null });
+    const [uploading, setUploading] = useState({ stores: false, pricelist: false, quotations: false });
+    const [status, setStatus] = useState({ stores: null, pricelist: null, quotations: null });
     const { darkMode, colors, themeStyles } = useTheme();
 
     const handleUpload = async (type, file) => {
@@ -18,7 +18,12 @@ const DataSync = () => {
         formData.append('file', file);
 
         try {
-            const endpoint = `${API_BASE_URL}/api/master/${type === 'stores' ? 'upload-stores' : 'upload-pricelist'}`;
+            const endpoints = {
+                stores: `${API_BASE_URL}/api/master/upload-stores`,
+                pricelist: `${API_BASE_URL}/api/master/upload-pricelist`,
+                quotations: `${API_BASE_URL}/api/master/upload-quotations`
+            };
+            const endpoint = endpoints[type];
             const response = await fetch(endpoint, {
                 method: 'POST',
                 body: formData,
@@ -133,6 +138,40 @@ const DataSync = () => {
                     description="Upload new material and labor rates. This will refresh the defaults used globally across all new quotations."
                     icon={DollarSign}
                 />
+                <SyncCard
+                    type="quotations"
+                    title="Quotation Tracker Master"
+                    description="Upload historical quotation data. This will create Quotations, POs, and Finance records from your excel sheets."
+                    icon={Database}
+                />
+            </div>
+
+            {/* Field Guide for Quotations */}
+            <div className={`${themeStyles.card} p-8 animate-in fade-in duration-700`}>
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="bg-amber-500/10 p-3 rounded-xl text-amber-500">
+                        <AlertCircle size={24} />
+                    </div>
+                    <div>
+                        <h3 className={`text-lg font-black uppercase tracking-tight ${colors.text}`}>Quotation Bulk Import Guide</h3>
+                        <p className={colors.textSecondary}>The system supports 34 specific columns. Ensure your CSV headers match these aliases:</p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-4 gap-x-8">
+                    {[
+                        "Q # / Q DATE", "MR # / MR DATE", "PR# / CCID", "BRAND / LOCATION / CITY / REGION",
+                        "WORK DESCRIPTION / WORK STATUS", "COMPLETION DATE / COMPLETED BY", "PO# / PO DATE / ETA / UPDATE",
+                        "AMOUNT BEFORE DISCOUNT / DISCOUNT", "AMOUNT EX VAT / VAT (15%) / AMOUNT INC VAT",
+                        "CRAFTSPERSON NOTES / SUPERVISOR", "DATE OF CHECK-IN / TIME OF CHECK-IN",
+                        "STORE OPENING DATE / COMMENTS", "INVOICE NO. / MONTH / RECEIVED AMOUNT",
+                        "PAYMENT DATE / REF #"
+                    ].map((group, idx) => (
+                        <div key={idx} className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                            <CheckCircle2 size={12} className="text-emerald-500" /> {group}
+                        </div>
+                    ))}
+                </div>
             </div>
 
             {/* Critical Note */}

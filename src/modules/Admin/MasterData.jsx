@@ -95,65 +95,72 @@ const MasterData = () => {
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className={themeStyles.tableHeader}>
-                                <th className="p-4 border-r border-white/5 tracking-widest">CCID</th>
-                                <th className="p-4 border-r border-white/5 tracking-widest">Brand / Name</th>
-                                <th className="p-4 border-r border-white/5 tracking-widest">Location</th>
-                                <th className="p-4 border-r border-white/5 tracking-widest">Management</th>
-                                <th className="p-4 border-r border-white/5 tracking-widest">Status</th>
-                                <th className="p-4 text-right tracking-widest">Actions</th>
+                                <th className="p-4 border-r border-white/5 tracking-widest text-xs whitespace-nowrap">CCID</th>
+                                <th className="p-4 border-r border-white/5 tracking-widest text-xs whitespace-nowrap">Brand</th>
+                                <th className="p-4 border-r border-white/5 tracking-widest text-xs whitespace-nowrap">Store Name</th>
+                                <th className="p-4 border-r border-white/5 tracking-widest text-xs whitespace-nowrap">City</th>
+                                <th className="p-4 border-r border-white/5 tracking-widest text-xs whitespace-nowrap">Mall</th>
+                                <th className="p-4 border-r border-white/5 tracking-widest text-xs whitespace-nowrap">Region</th>
+                                <th className="p-4 border-r border-white/5 tracking-widest text-xs whitespace-nowrap">FM Manager</th>
+                                <th className="p-4 border-r border-white/5 tracking-widest text-xs whitespace-nowrap">Supervisor</th>
+                                <th className="p-4 border-r border-white/5 tracking-widest text-xs whitespace-nowrap">Status</th>
+                                <th className="p-4 border-r border-white/5 tracking-widest text-xs whitespace-nowrap">Map</th>
                             </tr>
                         </thead>
                         <tbody className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
                             {loading ? (
                                 Array(5).fill(0).map((_, i) => (
                                     <tr key={i} className="animate-pulse">
-                                        <td colSpan="6" className="p-4"><div className={`h-12 rounded-xl ${darkMode ? 'bg-gray-800' : 'bg-gray-100'}`}></div></td>
+                                        <td colSpan="10" className="p-4"><div className={`h-8 rounded ${darkMode ? 'bg-gray-800' : 'bg-gray-100'}`}></div></td>
                                     </tr>
                                 ))
                             ) : filteredStores.length === 0 ? (
                                 <tr>
-                                    <td colSpan="6" className="p-12 text-center">
+                                    <td colSpan="10" className="p-12 text-center">
                                         <div className="opacity-20 mb-2 flex justify-center"><Database size={48} /></div>
                                         <p className="text-gray-400 font-bold uppercase text-xs tracking-widest">No matching records found</p>
                                     </td>
                                 </tr>
                             ) : filteredStores.map((store) => (
                                 <tr key={store.oracle_ccid} className={themeStyles.tableRow}>
-                                    <td className="p-4">
-                                        <span className={`px-3 py-1 font-mono text-sm font-bold rounded-lg border ${darkMode ? 'bg-gray-900 text-indigo-400 border-gray-700' : 'bg-indigo-50 text-indigo-600 border-indigo-100'}`}>
+                                    <td className="p-4 text-xs font-bold font-mono">
+                                        <span className={`px-2 py-1 rounded bg-opacity-20 ${darkMode ? 'bg-indigo-500 text-indigo-300' : 'bg-indigo-100 text-indigo-700'}`}>
                                             {store.oracle_ccid}
                                         </span>
                                     </td>
-                                    <td className="p-4">
-                                        <div>
-                                            <p className={`text-sm font-black uppercase leading-none mb-1 ${colors.text}`}>{store.brand}</p>
-                                            <p className={`text-[10px] font-bold uppercase tracking-tight ${colors.textSecondary}`}>{store.store_name}</p>
-                                        </div>
+                                    <td className="p-4 text-xs font-bold uppercase">{store.brand}</td>
+                                    <td className="p-4 text-xs font-medium uppercase">{store.store_name}</td>
+                                    <td className="p-4 text-xs">{store.city}</td>
+                                    <td className="p-4 text-xs">{store.mall}</td>
+                                    <td className="p-4 text-xs font-bold text-center">
+                                        <span className={`px-2 py-0.5 rounded ${darkMode ? 'bg-blue-900/40 text-blue-400' : 'bg-blue-100 text-blue-700'}`}>
+                                            {store.region}
+                                        </span>
                                     </td>
-                                    <td className="p-4">
-                                        <div className="flex items-center gap-2">
-                                            <span className={`text-[10px] font-black px-2 py-0.5 rounded-md uppercase ${darkMode ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-700'}`}>{store.region}</span>
-                                            <span className="text-xs font-medium">{store.city} • {store.mall}</span>
-                                        </div>
-                                    </td>
-                                    <td className="p-4">
-                                        <div className="flex flex-col">
-                                            <span className="text-xs font-bold">FM: {store.fm_manager}</span>
-                                            <span className={`text-[10px] uppercase font-medium ${colors.textSecondary}`}>SUP: {store.fm_supervisor}</span>
-                                        </div>
-                                    </td>
+                                    <td className="p-4 text-xs whitespace-nowrap">{store.fm_manager}</td>
+                                    <td className="p-4 text-xs whitespace-nowrap">{store.fm_supervisor}</td>
                                     <td className="p-4">
                                         <span className={`text-[9px] font-black px-2 py-1 rounded-full uppercase tracking-widest border ${store.store_status === 'ACTIVE' || store.store_status === 'LFL'
                                                 ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
                                                 : darkMode ? 'bg-gray-800 text-gray-500 border-gray-700' : 'bg-gray-50 text-gray-400 border-gray-100'
                                             }`}>
-                                            {store.store_status}
+                                            {store.store_status || 'N/A'}
                                         </span>
                                     </td>
-                                    <td className="p-4 text-right">
-                                        <button className={`p-2 rounded-lg transition-all active:scale-90 ${darkMode ? 'text-gray-500 hover:text-white hover:bg-white/10' : 'text-gray-400 hover:text-indigo-600 hover:bg-indigo-50'}`}>
-                                            <ArrowUpRight size={18} />
-                                        </button>
+                                    <td className="p-4 text-center">
+                                        {store.map_location ? (
+                                            <a
+                                                href={store.map_location}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className={`p-1.5 rounded hover:bg-opacity-20 inline-block transition ${darkMode ? 'text-blue-400 hover:bg-blue-400' : 'text-blue-600 hover:bg-blue-100'}`}
+                                                title="View Map"
+                                            >
+                                                <MapPin size={16} />
+                                            </a>
+                                        ) : (
+                                            <span className="text-gray-400">-</span>
+                                        )}
                                     </td>
                                 </tr>
                             ))}

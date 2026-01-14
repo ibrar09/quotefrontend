@@ -77,7 +77,8 @@ const QuotationEditModal = ({ quotation, onClose, onUpdated }) => {
                             our_bank_ref: fin.our_bank_ref || '',
                             company_bank_ref: fin.company_bank_ref || '',
                             payment_status: fin.payment_status || '',
-                            payment_ref: fin.payment_ref || ''
+                            payment_ref: fin.payment_ref || '',
+                            general_ref: fin.general_ref || ''
                         },
                     });
                 }
@@ -200,6 +201,9 @@ const QuotationEditModal = ({ quotation, onClose, onUpdated }) => {
                 subtotal: Number(formData.subtotal) || 0,
                 vat_amount: Number(formData.vat_amount) || 0,
                 grand_total: Number(formData.grand_total) || 0,
+                craftsperson_notes: formData.craftsperson_notes || '',
+                check_in_date: formData.check_in_date || null,
+                check_in_time: formData.check_in_time || '',
                 items: formData.JobItems.map(item => ({
                     item_code: item.item_code,
                     description: item.description,
@@ -241,7 +245,8 @@ const QuotationEditModal = ({ quotation, onClose, onUpdated }) => {
                     our_bank_ref: formData.Finance.our_bank_ref || '',
                     company_bank_ref: formData.Finance.company_bank_ref || '',
                     payment_status: (formData.Finance.payment_status || '').toUpperCase(),
-                    payment_ref: formData.Finance.payment_ref || ''
+                    payment_ref: formData.Finance.payment_ref || '',
+                    general_ref: formData.Finance.general_ref || ''
                 }
             };
 
@@ -510,6 +515,17 @@ const QuotationEditModal = ({ quotation, onClose, onUpdated }) => {
                             <Input label="Completion Date" darkMode={darkMode} value={formData.completion_date} onChange={v => handleChange("completion_date", v)} type="date" />
                             <Input label="Completed By" darkMode={darkMode} value={formData.completed_by} onChange={v => handleChange("completed_by", v)} />
                             <Input label="Supervisor" darkMode={darkMode} value={formData.supervisor} onChange={v => handleChange("supervisor", v)} />
+                            <Input label="Check-In Date" darkMode={darkMode} value={formData.check_in_date} onChange={v => handleChange("check_in_date", v)} type="date" />
+                            <Input label="Check-In Time" darkMode={darkMode} value={formData.check_in_time} onChange={v => handleChange("check_in_time", v)} />
+                            <div className="col-span-full">
+                                <label className="text-[10px] font-black uppercase text-gray-500 mb-1 ml-1">Craftsperson Notes</label>
+                                <textarea
+                                    value={formData.craftsperson_notes || ""}
+                                    onChange={e => handleChange("craftsperson_notes", e.target.value)}
+                                    rows={3}
+                                    className={`w-full border-2 rounded-xl px-4 py-3 text-sm font-bold ${darkMode ? "bg-gray-800 border-gray-700 text-white" : "bg-gray-50 border-gray-200"}`}
+                                />
+                            </div>
                         </div>
                     )}
 
@@ -537,6 +553,7 @@ const QuotationEditModal = ({ quotation, onClose, onUpdated }) => {
                             </div>
                             <Input label="Invoice Number" darkMode={darkMode} value={formData.Finance.invoice_no} onChange={v => handleChange("Finance.invoice_no", v)} />
                             <Input label="Invoice Date" darkMode={darkMode} value={formData.Finance.invoice_date} onChange={v => handleChange("Finance.invoice_date", v)} type="date" />
+                            <Input label="Discount Amount" darkMode={darkMode} value={formData.discount} onChange={v => handleChange("discount", v)} type="number" />
                             <Input label="Advance Payment" darkMode={darkMode} value={formData.Finance.advance_payment} onChange={v => handleChange("Finance.advance_payment", v)} type="number" />
                             <Input label="Received Amount" darkMode={darkMode} value={formData.Finance.received_amount} onChange={v => handleChange("Finance.received_amount", v)} type="number" />
                             <Input label="Payment Date" darkMode={darkMode} value={formData.Finance.payment_date} onChange={v => handleChange("Finance.payment_date", v)} type="date" />
@@ -556,6 +573,7 @@ const QuotationEditModal = ({ quotation, onClose, onUpdated }) => {
                             <Input label="Company Bank Reference" darkMode={darkMode} value={formData.Finance.company_bank_ref} onChange={v => handleChange("Finance.company_bank_ref", v)} />
                             <Input label="Payment Status" darkMode={darkMode} value={formData.Finance.payment_status} onChange={v => handleChange("Finance.payment_status", v)} />
                             <Input label="Payment Reference" darkMode={darkMode} value={formData.Finance.payment_ref} onChange={v => handleChange("Finance.payment_ref", v)} />
+                            <Input label="General Ref #" darkMode={darkMode} value={formData.Finance.general_ref} onChange={v => handleChange("Finance.general_ref", v)} />
                         </div>
                     )}
                 </div>

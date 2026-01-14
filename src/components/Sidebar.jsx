@@ -30,6 +30,41 @@ const Sidebar = ({ darkMode = true }) => {
           color: "blue",
         },
         {
+          id: "quotation-cp",
+          label: "📍 CP Quotations",
+          route: "/quotations/list?region=CP",
+          count: 0,
+          color: "blue",
+        },
+        {
+          id: "quotation-cpr",
+          label: "📍 CPR Quotations",
+          route: "/quotations/list?region=CPR",
+          count: 0,
+          color: "blue",
+        },
+        {
+          id: "quotation-ep",
+          label: "📍 EP Quotations",
+          route: "/quotations/list?region=EP",
+          count: 0,
+          color: "blue",
+        },
+        {
+          id: "quotation-wp",
+          label: "📍 WP Quotations",
+          route: "/quotations/list?region=WP",
+          count: 0,
+          color: "blue",
+        },
+        {
+          id: "quotation-wpr",
+          label: "📍 WPR Quotations",
+          route: "/quotations/list?region=WPR",
+          count: 0,
+          color: "blue",
+        },
+        {
           id: "intake-tracker",
           label: "📥 Intake Tracker",
           route: "/quotations/intakes",
@@ -71,6 +106,7 @@ const Sidebar = ({ darkMode = true }) => {
       icon: "🗄️",
       subItems: [
         { id: "md-view", label: "Dashboard View", route: "/master-data", color: "blue" },
+        { id: "md-custom", label: "Custom Stores", route: "/admin/custom-stores", color: "orange" }, // New
         { id: "md-sync", label: "Sync / Upload", route: "/admin/data-sync", color: "indigo" },
       ]
     },
@@ -80,6 +116,7 @@ const Sidebar = ({ darkMode = true }) => {
       icon: "💲",
       subItems: [
         { id: "pl-view", label: "Rate Card View", route: "/rate-card", color: "green" },
+        { id: "pl-custom", label: "Custom PL / Items", route: "/admin/custom-pricelist", color: "purple" }, // New
         { id: "pl-sync", label: "Sync / Upload", route: "/admin/data-sync", color: "indigo" },
       ]
     },
@@ -100,7 +137,24 @@ const Sidebar = ({ darkMode = true }) => {
     navigate(route);
   };
 
-  const isActiveRoute = (route) => location.pathname === route;
+  const isActiveRoute = (itemRoute) => {
+    if (!itemRoute) return false;
+
+    // Exact match for both path and query string
+    const currentFull = location.pathname + location.search;
+
+    // Normalizing paths (ensuring /quotations/list doesn't match /quotations/list?region=CP)
+    if (itemRoute.includes('?')) {
+      return currentFull === itemRoute;
+    }
+
+    // If itemRoute is the base list, only highlight if current search is empty
+    if (itemRoute === '/quotations/list') {
+      return location.pathname === '/quotations/list' && !location.search;
+    }
+
+    return location.pathname === itemRoute;
+  };
 
   const getBadgeClass = (color) => {
     switch (color) {
@@ -148,7 +202,7 @@ const Sidebar = ({ darkMode = true }) => {
               <div
                 onClick={() => handleMainClick(item)}
                 className={`flex items-center p-3 mx-2 rounded-xl cursor-pointer transition
-                ${isActiveRoute(item.route)
+                ${isActiveRoute(item.route) || (item.subItems && item.subItems.some(sub => isActiveRoute(sub.route)))
                     ? "bg-blue-600 text-white shadow"
                     : "hover:bg-white/20"
                   }`}
@@ -173,7 +227,7 @@ const Sidebar = ({ darkMode = true }) => {
                         onClick={() => handleSubClick(sub.route)}
                         className={`flex items-center justify-between px-3 py-1 text-xs rounded-md cursor-pointer
                         ${isActiveRoute(sub.route)
-                            ? "bg-white/30 font-semibold"
+                            ? "bg-white/50 font-bold border-l-2 border-white"
                             : "hover:bg-white/20"
                           }`}
                       >
