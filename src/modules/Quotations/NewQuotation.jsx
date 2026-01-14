@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Camera, X, Save, ArrowRight, Search, Loader2, CheckCircle2, AlertCircle, Trash2, Plus, Printer, Download, Upload } from 'lucide-react';
 import axios from 'axios';
@@ -58,6 +59,26 @@ const NewQuotation = () => {
   const [approval, setApproval] = useState({ prepared: '', reviewed: '', approved: '' });
   const [highlightedSuggestion, setHighlightedSuggestion] = useState(0);
   const suggestionItemRefs = useRef([]);
+  // [NEW] Portal Positioning State
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
+
+  const updateDropdownPosition = (element) => {
+    if (element) {
+      const rect = element.getBoundingClientRect();
+      setDropdownPos({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width
+      });
+    }
+  };
+
+  // Close/Update on scroll to avoid floating issues
+  useEffect(() => {
+    const handleScroll = () => { if (priceSuggestions.length > 0) setPriceSuggestions([]); };
+    window.addEventListener('scroll', handleScroll, true);
+    return () => window.removeEventListener('scroll', handleScroll, true);
+  }, [priceSuggestions]);
 
   // Auto-scroll logic for suggestions
   useEffect(() => {
@@ -1169,7 +1190,10 @@ const NewQuotation = () => {
                     >
                       <td
                         className={`border border-black p-2 relative cursor-text transition-colors ${activeRow === index && activeField === 'code' ? 'bg-blue-50 ring-1 ring-inset ring-blue-400' : ''}`}
-                        onClick={(e) => handleCellClick(e, index, 'code')}
+                        onClick={(e) => {
+                          handleCellClick(e, index, 'code');
+                          updateDropdownPosition(e.currentTarget); // Capture position of cell
+                        }}
                       >
                         <input
                           data-row={index}
@@ -1214,7 +1238,10 @@ const NewQuotation = () => {
                       </td>
                       <td
                         className={`border border-black p-2 relative cursor-text transition-colors ${activeRow === index && activeField === 'description' ? 'bg-blue-50 ring-1 ring-inset ring-blue-400' : ''}`}
-                        onClick={(e) => handleCellClick(e, index, 'description')}
+                        onClick={(e) => {
+                          handleCellClick(e, index, 'description');
+                          updateDropdownPosition(e.currentTarget);
+                        }}
                       >
                         <textarea
                           data-row={index}
@@ -1237,36 +1264,12 @@ const NewQuotation = () => {
                           onFocus={(e) => {
                             handleFocus(index, 'description', e.target.value);
                             e.target.select();
+                            updateDropdownPosition(e.target.closest('td'));
                           }}
                           onKeyDown={(e) => handleGridKeyDown(e, index, 'description')}
                         />
                         <div className="print-only min-h-[40px] text-black font-semibold whitespace-pre-wrap">{item.description}</div>
-
-                        {activeRow === index && activeField === 'description' && priceSuggestions.length > 0 && (
-                          <div
-                            ref={suggestionContainerRef}
-                            className="absolute left-0 right-[-300px] mt-1 bg-white border border-black shadow-2xl z-50 max-h-60 overflow-y-auto no-print scroll-smooth"
-                          >
-                            {priceSuggestions.map((s, i) => (
-                              <div
-                                key={i}
-                                ref={el => suggestionItemRefs.current[i] = el}
-                                className={`p-2 hover:bg-yellow-50 cursor-pointer border-b border-gray-100 last:border-none ${highlightedSuggestion === i ? 'bg-yellow-100 ring-2 ring-inset ring-yellow-400' : ''}`}
-                                onMouseDown={(e) => {
-                                  e.preventDefault();
-                                  selectSuggestion(index, s);
-                                }}
-                              >
-                                <div className="flex justify-between items-start gap-2">
-                                  <span className="font-bold text-[10px] text-cyan-600 shrink-0">{s.code}</span>
-                                  <span className="px-1.5 py-0.5 rounded-md text-[8px] font-bold bg-blue-50 text-blue-500 uppercase">{s.type || 'Standard'}</span>
-                                  <span className="text-right text-[9px] font-bold text-gray-500 ml-auto">{Number(s.material_price) + Number(s.labor_price)} SAR</span>
-                                </div>
-                                <div className="text-[9px] text-gray-700 leading-tight mt-1 truncate">{s.description}</div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                        {/* Suggestions moved to Portal */}
                       </td>
                       <td
                         className={`border border-black p-2 cursor-text transition-colors ${activeRow === index && activeField === 'unit' ? 'bg-blue-50 ring-1 ring-inset ring-blue-400' : ''}`}
@@ -1408,6 +1411,49 @@ const NewQuotation = () => {
             <Plus size={12} /> Add Row
           </button>
         </div>
+
+        {createPortal(
+          <AnimatePresence>
+            {activeRow !== null && (activeField === 'code' || activeField === 'description') && priceSuggestions.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="fixed bg-white border border-black shadow-2xl z-[9999] max-h-60 overflow-y-auto no-print scroll-smooth rounded-lg"
+                style={{
+                  top: dropdownPos.top - window.scrollY,
+                  left: dropdownPos.left,
+                  width: activeField === 'description' ? 400 : 300, // Wider for description
+                  maxHeight: '300px'
+                }}
+              >
+                <div className="p-1 bg-gray-50 border-b flex justify-between items-center text-[10px] text-gray-500 sticky top-0 z-10">
+                  <span>Found {priceSuggestions.length} items</span>
+                  <button onClick={() => setPriceSuggestions([])}><X size={12} /></button>
+                </div>
+                {priceSuggestions.map((s, i) => (
+                  <div
+                    key={i}
+                    ref={el => suggestionItemRefs.current[i] = el}
+                    className={`p-2 hover:bg-yellow-50 cursor-pointer border-b border-gray-100 last:border-none ${highlightedSuggestion === i ? 'bg-yellow-100 ring-2 ring-inset ring-yellow-400' : ''}`}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      selectSuggestion(activeRow, s);
+                    }}
+                  >
+                    <div className="flex justify-between items-start gap-2">
+                      <span className="font-bold text-[10px] text-cyan-600 shrink-0">{s.code}</span>
+                      <span className="px-1.5 py-0.5 rounded-md text-[8px] font-bold bg-blue-50 text-blue-500 uppercase">{s.type || 'Standard'}</span>
+                      <span className="text-right text-[9px] font-bold text-gray-500 ml-auto">{Number(s.material_price) + Number(s.labor_price)} SAR</span>
+                    </div>
+                    <div className="text-[9px] text-gray-700 leading-tight mt-1 truncate">{s.description}</div>
+                  </div>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
 
 
 
