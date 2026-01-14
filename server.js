@@ -65,13 +65,16 @@ sequelize.sync({ alter: true })
     .then(() => console.log('✅ Database Tables Synced'))
     .catch(err => console.log('❌ Sync Error: ' + err));
 
+// 4. Run DB Fix to drop constraints (Temporary for v1.1.5)
+import './fix_db.js';
+
 // Start the Server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`==========================================`);
     console.log(`   QUOTATIONS SYSTEM STARTING...          `);
     console.log(`   SERVER RUNNING ON PORT: ${PORT}        `);
-    console.log(`   VERSION: 1.1.4 (Notif Test)            `);
+    console.log(`   VERSION: 1.1.5 (DB Constraint Fix)     `);
     console.log(`==========================================`);
 
     // Start notification cron job
