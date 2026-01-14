@@ -45,6 +45,34 @@ const QuotationList = () => {
         fetchQuotations();
     }, [searchParams]);
 
+    // Drag-to-Scroll State
+    const tableContainerRef = useRef(null);
+    const [isDragging, setIsDragging] = useState(false);
+    const [startX, setStartX] = useState(0);
+    const [scrollLeft, setScrollLeft] = useState(0);
+
+    const handleMouseDown = (e) => {
+        setIsDragging(true);
+        setStartX(e.pageX - tableContainerRef.current.offsetLeft);
+        setScrollLeft(tableContainerRef.current.scrollLeft);
+    };
+
+    const handleMouseLeave = () => {
+        setIsDragging(false);
+    };
+
+    const handleMouseUp = () => {
+        setIsDragging(false);
+    };
+
+    const handleMouseMove = (e) => {
+        if (!isDragging) return;
+        e.preventDefault();
+        const x = e.pageX - tableContainerRef.current.offsetLeft;
+        const walk = (x - startX) * 2; // Scroll multiplier (speed)
+        tableContainerRef.current.scrollLeft = scrollLeft - walk;
+    };
+
     // Auto-scroll to highlighted row
     useEffect(() => {
         if (highlightedRow && quotations.length > 0) {
@@ -432,8 +460,16 @@ const QuotationList = () => {
                 </div>
             </div>
 
-            {/* Table */}
-            <div className={`overflow-x-auto shadow-xl border ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+            {/* Table Container with Drag-to-Scroll */}
+            <div
+                ref={tableContainerRef}
+                onMouseDown={handleMouseDown}
+                onMouseLeave={handleMouseLeave}
+                onMouseUp={handleMouseUp}
+                onMouseMove={handleMouseMove}
+                className={`overflow-x-auto shadow-xl border ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}
+                ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} active:cursor-grabbing`}
+            >
                 <table className="w-full text-left border-collapse whitespace-nowrap">
                     <thead>
                         <tr className={themeStyles.tableHeader}>
