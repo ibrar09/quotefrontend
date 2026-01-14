@@ -57,7 +57,7 @@ sequelize.authenticate()
 
 // 2. Health Check Route
 app.get('/', (req, res) => {
-    res.send('Quotations System Server is Running & Connected to DB!');
+    res.send('Quotations System v1.1.1 (Cloudinary Fix) is Running!');
 });
 
 // 3. Database Sync
