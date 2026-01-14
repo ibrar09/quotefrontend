@@ -47,6 +47,7 @@ const NewQuotation = () => {
   const [rawFiles, setRawFiles] = useState([]); // Track actual File objects for upload
   const [loadingStore, setLoadingStore] = useState(false);
   const [storeStatus, setStoreStatus] = useState(null);
+  const [mrStatus, setMrStatus] = useState(null); // 'checking', 'exists', 'available'
   const [priceSuggestions, setPriceSuggestions] = useState([]);
   const [activeRow, setActiveRow] = useState(null); // { index: number, field: 'code' | 'description' }
   const [activeField, setActiveField] = useState(null);
@@ -137,6 +138,30 @@ const NewQuotation = () => {
       return false;
     } finally {
       setLoadingStore(false);
+    }
+  };
+
+  // --- MR Validation Logic ---
+  // --- MR Validation Logic ---
+  const checkMrExistence = async () => {
+    const val = header.mrNo;
+    if (!val) {
+      setMrStatus(null);
+      return;
+    }
+
+    setMrStatus('checking');
+    try {
+      const res = await axios.get(`${API_BASE_URL}/api/quotations/check-mr?mrNo=${encodeURIComponent(val)}`);
+      if (res.data.exists) {
+        setMrStatus('exists');
+        alert("⚠️ WARNING: This MR Number already exists in the system!");
+      } else {
+        setMrStatus('available');
+      }
+    } catch (err) {
+      console.error("MR Check failed:", err);
+      setMrStatus(null);
     }
   };
 
@@ -755,13 +780,22 @@ const NewQuotation = () => {
       }
     }
 
-    // 2. Generate PDF using the ID
+    // 2. Generate PDF using the ID (BACKEND GENERATION)
     try {
-      // The frontend route that displays the print view
-      const pdfUrl = `${window.location.origin}/quotations/print-view/${quoteId}`;
-      console.log("Requesting PDF for:", pdfUrl);
+      console.log("Requesting Backend PDF for ID:", quoteId);
 
-      const res = await axios.post(`${API_BASE_URL}/api/pdf/generate`, { url: pdfUrl }, {
+      const payload = {
+        title: "QUOTATION"
+      };
+
+      // Determine if it's a preview or real ID
+      if (typeof quoteId === 'string' && quoteId.startsWith('preview-')) {
+        payload.previewId = quoteId.replace('preview-', '');
+      } else {
+        payload.quotationId = quoteId;
+      }
+
+      const res = await axios.post(`${API_BASE_URL}/api/pdf/generate`, payload, {
         responseType: 'blob'
       });
 
@@ -769,7 +803,7 @@ const NewQuotation = () => {
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `Quotation - ${header.quoteNo}.pdf`);
+      link.setAttribute('download', `Quotation - ${header.quoteNo || 'Draft'}.pdf`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -928,12 +962,28 @@ const NewQuotation = () => {
               <input
                 data-row="header"
                 data-col="mrNo"
-                className="w-full outline-none font-semibold uppercase bg-transparent pr-8 no-print"
+                className={`w-full outline-none font-semibold uppercase bg-transparent pr-8 no-print ${mrStatus === 'exists' ? 'text-red-600' : ''}`}
                 value={header.mrNo}
                 onChange={(e) => handleHeaderChange('mrNo', e.target.value)}
-                onKeyDown={(e) => handleHeaderKeyDown(e, 'mrNo')}
+                onBlur={checkMrExistence}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') checkMrExistence();
+                  handleHeaderKeyDown(e, 'mrNo');
+                }}
                 onFocus={(e) => e.target.select()}
               />
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 no-print">
+                {mrStatus === 'checking' && <Loader2 size={16} className="animate-spin text-gray-400" />}
+                {mrStatus === 'exists' && (
+                  <div className="group relative">
+                    <AlertCircle size={16} className="text-red-600 cursor-help" />
+                    <span className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-red-600 text-white text-[10px] rounded shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none text-center">
+                      MR Number already exists!
+                    </span>
+                  </div>
+                )}
+                {mrStatus === 'available' && <CheckCircle2 size={16} className="text-emerald-500" />}
+              </div>
               <span className="print-only">{header.mrNo}</span>
             </div>
           </div>
@@ -1090,7 +1140,7 @@ const NewQuotation = () => {
 
         {/* Items Table-Using relative and overflow-visible for suggestions */}
         <div className="relative z-30" onPaste={handleGridPaste}>
-          <div className="overflow-visible">
+          <div className="overflow-x-auto overflow-y-visible">
             <table className="w-full border-collapse border border-black text-[10px]">
               <thead>
                 <tr className="bg-gray-100 font-bold uppercase text-[9px]">

@@ -95,7 +95,7 @@ const RecentActivityTable = () => {
             {activities.map((activity, index) => (
               <div
                 key={activity.id}
-                className="group relative flex items-center justify-between p-5 rounded-2xl transition-all duration-300 cursor-pointer border hover:shadow-lg"
+                className="group relative flex items-center justify-between p-3 md:p-5 rounded-2xl transition-all duration-300 cursor-pointer border hover:shadow-lg gap-2 md:gap-4"
                 style={{
                   backgroundColor: darkMode ? "rgba(31, 41, 55, 0.3)" : "rgba(249, 250, 251, 0.5)",
                   borderColor: darkMode ? "rgba(75, 85, 99, 0.2)" : "rgba(229, 231, 235, 0.5)",
@@ -110,13 +110,13 @@ const RecentActivityTable = () => {
                   e.currentTarget.style.backgroundColor = darkMode ? "rgba(31, 41, 55, 0.3)" : "rgba(249, 250, 251, 0.5)";
                   e.currentTarget.style.borderColor = darkMode ? "rgba(75, 85, 99, 0.2)" : "rgba(229, 231, 235, 0.5)";
                 }}
-                onClick={() => navigate('/quotations/list')}
+                onClick={() => navigate(`/quotations/list?search=${encodeURIComponent(activity.quote_no)}`)}
               >
                 {/* Left Side - Quote Info */}
                 <div className="flex items-center gap-4 flex-1">
                   {/* Index Badge */}
                   <div
-                    className="flex items-center justify-center w-10 h-10 rounded-xl font-black text-xs"
+                    className="flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-xl font-black text-[10px] md:text-xs shrink-0"
                     style={{
                       backgroundColor: `${getStatusColor(activity.status)}15`,
                       color: getStatusColor(activity.status)
@@ -128,11 +128,11 @@ const RecentActivityTable = () => {
                   {/* Quote Details */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-1">
-                      <span className="font-black text-sm" style={{ color: darkMode ? "#f9fafb" : "#111827" }}>
+                      <span className="font-black text-xs md:text-sm truncate" style={{ color: darkMode ? "#f9fafb" : "#111827" }}>
                         {activity.quote_no}
                       </span>
                       <span
-                        className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider"
+                        className="px-1.5 py-0.5 md:px-2.5 rounded-full text-[8px] md:text-[9px] font-black uppercase tracking-wider shrink-0"
                         style={{
                           backgroundColor: `${getStatusColor(activity.status)}20`,
                           color: getStatusColor(activity.status)
@@ -140,17 +140,34 @@ const RecentActivityTable = () => {
                       >
                         {activity.status}
                       </span>
+                      {/* MR Number Badge */}
+                      {activity.mr_no && activity.mr_no !== 'N/A' && (
+                        <span className="text-[10px] bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-gray-500 font-mono">
+                          {activity.mr_no}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 text-xs" style={{ color: darkMode ? "#9ca3af" : "#6b7280" }}>
                       <Building2 size={12} />
-                      <span className="font-semibold truncate">{activity.brand}</span>
+                      <span className="font-semibold truncate max-w-[120px]">{activity.brand}</span>
+                      {activity.work_description && (
+                        <span className="truncate max-w-[200px] opacity-70 border-l pl-2 ml-1 border-gray-500">
+                          {activity.work_description}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
 
-                {/* Right Side - Time & Action */}
+                {/* Right Side - Time & Amount */}
                 <div className="flex items-center gap-4">
                   <div className="text-right">
+                    {/* Amount Display */}
+                    {Number(activity.grand_total) > 0 && (
+                      <div className="text-xs md:text-sm font-bold mb-0.5 text-emerald-500">
+                        {new Intl.NumberFormat('en-SA', { style: 'currency', currency: 'SAR', maximumFractionDigits: 0 }).format(activity.grand_total)}
+                      </div>
+                    )}
                     <div className="text-[10px] font-black uppercase tracking-wider" style={{ color: darkMode ? "#6b7280" : "#9ca3af" }}>
                       {formatTime(activity.updatedAt)}
                     </div>
@@ -164,7 +181,7 @@ const RecentActivityTable = () => {
                     }}
                     onClick={(e) => {
                       e.stopPropagation();
-                      navigate('/quotations/list');
+                      navigate(`/quotations/list?search=${encodeURIComponent(activity.quote_no)}`);
                     }}
                   >
                     <ExternalLink size={14} />

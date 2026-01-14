@@ -8,6 +8,7 @@ import { useTheme } from "../context/ThemeContext";
 const DashboardLayout = () => {
   const { darkMode } = useTheme();
   const location = useLocation();
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const getPageTitle = () => {
     const path = location.pathname;
@@ -28,10 +29,26 @@ const DashboardLayout = () => {
         : "bg-[#f9fafb] text-gray-900"
         }`}
     >
-      <Sidebar darkMode={darkMode} />
+      {/* Mobile Sidebar Overlay */}
+      {isMobileSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm"
+          onClick={() => setIsMobileSidebarOpen(false)}
+        />
+      )}
+
+      <Sidebar
+        darkMode={darkMode}
+        isMobileOpen={isMobileSidebarOpen}
+        onClose={() => setIsMobileSidebarOpen(false)}
+      />
+
       <div className="flex-1 flex flex-col overflow-hidden">
-        <TopBar pageTitle={getPageTitle()} />
-        <main className="flex-1 overflow-y-auto p-6 space-y-6">
+        <TopBar
+          pageTitle={getPageTitle()}
+          onMenuClick={() => setIsMobileSidebarOpen(true)}
+        />
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
           <Outlet />
         </main>
       </div>

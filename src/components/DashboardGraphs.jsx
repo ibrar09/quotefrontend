@@ -42,30 +42,30 @@ const DashboardGraphs = () => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
       {/* Financial Summary Cards (Replaces Trend Graph) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-        <div className={`${themeStyles.card} flex flex-col justify-between p-6 border-l-8 border-green-500`}>
+      <div className="grid grid-cols-2 gap-2 md:gap-6">
+        <div className={`${themeStyles.card} flex flex-col justify-between p-3 md:p-6 border-l-4 md:border-l-8 border-green-500`}>
           <div className="flex justify-between items-start">
             <div>
               <p className="text-[10px] font-black uppercase text-gray-500 mb-1">Total Payment Paid</p>
-              <h4 className="text-3xl font-black text-green-500">{stats ? formatCurrency(stats.financials.total_paid) : '...'}</h4>
+              <h4 className="text-xl md:text-3xl font-black text-green-500">{stats ? formatCurrency(stats.financials.total_paid) : '...'}</h4>
             </div>
-            <div className="bg-green-500/10 p-2 rounded-xl text-green-500"><TrendingUp size={24} /></div>
+            <div className="bg-green-500/10 p-1.5 md:p-2 rounded-xl text-green-500"><TrendingUp size={16} className="md:w-6 md:h-6" /></div>
           </div>
           <p className="mt-4 text-[10px] font-bold text-gray-400">Total collected amount from all paid invoices.</p>
         </div>
 
-        <div className={`${themeStyles.card} flex flex-col justify-between p-6 border-l-8 border-red-500`}>
+        <div className={`${themeStyles.card} flex flex-col justify-between p-3 md:p-6 border-l-4 md:border-l-8 border-red-500`}>
           <div className="flex justify-between items-start">
             <div>
               <p className="text-[10px] font-black uppercase text-gray-500 mb-1">Amount Remaining</p>
-              <h4 className="text-3xl font-black text-red-500">{stats ? formatCurrency(stats.financials.remaining) : '...'}</h4>
+              <h4 className="text-xl md:text-3xl font-black text-red-500">{stats ? formatCurrency(stats.financials.remaining) : '...'}</h4>
             </div>
-            <div className="bg-red-500/10 p-2 rounded-xl text-red-500"><AlertCircle size={24} /></div>
+            <div className="bg-red-500/10 p-1.5 md:p-2 rounded-xl text-red-500"><AlertCircle size={16} className="md:w-6 md:h-6" /></div>
           </div>
           <p className="mt-4 text-[10px] font-bold text-gray-400">Outstanding balance from approved quotations.</p>
         </div>
 
-        <div className={`${themeStyles.card} col-span-full p-6 flex items-center justify-between border-l-8 border-blue-500`}>
+        <div className={`${themeStyles.card} col-span-full p-3 md:p-6 flex items-center justify-between border-l-4 md:border-l-8 border-blue-500`}>
           <div className="flex items-center gap-4">
             <div className="bg-blue-500/10 p-3 rounded-2xl text-blue-500"><CreditCard size={32} /></div>
             <div>

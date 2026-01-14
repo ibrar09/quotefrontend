@@ -1,9 +1,9 @@
 import React, { useState } from "react";
-import { FaUserCircle, FaSearch, FaSun, FaMoon } from "react-icons/fa";
+import { FaUserCircle, FaSearch, FaSun, FaMoon, FaBars } from "react-icons/fa";
 import { useTheme } from "../context/ThemeContext";
 import NotificationBell from "./NotificationBell";
 
-const TopBar = ({ pageTitle }) => {
+const TopBar = ({ pageTitle, onMenuClick }) => {
   const { darkMode, toggleTheme, themeStyles } = useTheme(); // get global theme
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
@@ -17,6 +17,13 @@ const TopBar = ({ pageTitle }) => {
     >
       {/* Page Title */}
       <div className="flex items-center space-x-4">
+        {/* Mobile Menu Button */}
+        <button
+          onClick={onMenuClick}
+          className="md:hidden p-2 rounded-lg hover:bg-white/20 transition-colors"
+        >
+          <FaBars className="text-xl" />
+        </button>
         <h1 className="text-lg md:text-xl font-bold transition-colors duration-300">{pageTitle}</h1>
       </div>
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, ArrowRightCircle, Loader2, Save } from 'lucide-react';
+import { FileText, ArrowRightCircle, Loader2, Save, AlertCircle, CheckCircle2 } from 'lucide-react';
+import axios from 'axios';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import logoSrc from '../../assets/Maaj-Logo 04.png';
@@ -16,6 +17,7 @@ const QuotationIntake = () => {
         storeCcid: '',
         mrDesc: ''
     });
+    const [mrStatus, setMrStatus] = useState(null); // 'checking', 'exists', 'available'
 
     useEffect(() => {
         if (location.state?.editIntake) {
@@ -53,16 +55,12 @@ const QuotationIntake = () => {
         }
         setLoading(true);
         try {
-            await fetch(`${API_BASE_URL}/api/quotations`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    mr_no: data.mrNo,
-                    oracle_ccid: data.storeCcid,
-                    work_description: data.mrDesc,
-                    quote_no: `INTAKE-${Date.now().toString().slice(-6)}`, // Temp ID
-                    quote_status: 'INTAKE'
-                })
+            await axios.post(`${API_BASE_URL}/api/quotations`, {
+                mr_no: data.mrNo,
+                oracle_ccid: data.storeCcid,
+                work_description: data.mrDesc,
+                quote_no: `INTAKE-${Date.now().toString().slice(-6)}`, // Temp ID
+                quote_status: 'INTAKE'
             });
             alert("✅ Saved to Intake Tracker successfully!");
             // Optional: clear form or navigate to Dashboard
@@ -72,6 +70,27 @@ const QuotationIntake = () => {
             alert("Failed to save intake.");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const checkMrExistence = async () => {
+        const val = data.mrNo;
+        if (!val) {
+            setMrStatus(null);
+            return;
+        }
+        setMrStatus('checking');
+        try {
+            const res = await axios.get(`${API_BASE_URL}/api/quotations/check-mr?mrNo=${encodeURIComponent(val)}`);
+            if (res.data.exists) {
+                setMrStatus('exists');
+                alert("⚠️ WARNING: This MR Number already exists in the system!");
+            } else {
+                setMrStatus('available');
+            }
+        } catch (err) {
+            console.error("MR Check failed:", err);
+            setMrStatus(null);
         }
     };
 
@@ -89,13 +108,31 @@ const QuotationIntake = () => {
                 <div className="p-8 space-y-6">
                     <div>
                         <label className={`${colors.textSecondary} text-[11px] font-black uppercase mb-1 block tracking-wider`}>MR Number</label>
-                        <input
-                            type="text"
-                            className={themeStyles.input}
-                            placeholder="e.g. MR-2025-001"
-                            value={data.mrNo}
-                            onChange={e => setData({ ...data, mrNo: e.target.value })}
-                        />
+                        <div className="relative">
+                            <input
+                                type="text"
+                                className={`${themeStyles.input} ${mrStatus === 'exists' ? 'border-red-500 text-red-600' : ''}`}
+                                placeholder="e.g. MR-2025-001"
+                                value={data.mrNo}
+                                onChange={e => {
+                                    setData({ ...data, mrNo: e.target.value });
+                                    if (mrStatus) setMrStatus(null);
+                                }}
+                                onBlur={checkMrExistence}
+                            />
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                                {mrStatus === 'checking' && <Loader2 size={16} className="animate-spin text-gray-400" />}
+                                {mrStatus === 'exists' && (
+                                    <div className="group relative">
+                                        <AlertCircle size={16} className="text-red-600 cursor-help" />
+                                        <span className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-red-600 text-white text-[10px] rounded shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-50 pointer-events-none text-center">
+                                            MR Number already exists!
+                                        </span>
+                                    </div>
+                                )}
+                                {mrStatus === 'available' && <CheckCircle2 size={16} className="text-emerald-500" />}
+                            </div>
+                        </div>
                     </div>
 
                     <div>

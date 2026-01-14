@@ -1,9 +1,9 @@
 // src/components/Sidebar.jsx
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
 
-const Sidebar = ({ darkMode = true }) => {
+const Sidebar = ({ darkMode = true, isMobileOpen = false, onClose }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -94,19 +94,13 @@ const Sidebar = ({ darkMode = true }) => {
         }
       ],
     },
-    // {
-    //   id: "finance",
-    //   label: "Finance & Invoicing",
-    //   icon: "💰",
-    //   route: "/finance",
-    // },
     {
       id: "master-data",
       label: "Master Data (AOR)",
       icon: "🗄️",
       subItems: [
         { id: "md-view", label: "Dashboard View", route: "/master-data", color: "blue" },
-        { id: "md-custom", label: "Custom Stores", route: "/admin/custom-stores", color: "orange" }, // New
+        { id: "md-custom", label: "Custom Stores", route: "/admin/custom-stores", color: "orange" },
         { id: "md-sync", label: "Sync / Upload", route: "/admin/data-sync", color: "indigo" },
       ]
     },
@@ -116,7 +110,7 @@ const Sidebar = ({ darkMode = true }) => {
       icon: "💲",
       subItems: [
         { id: "pl-view", label: "Rate Card View", route: "/rate-card", color: "green" },
-        { id: "pl-custom", label: "Custom PL / Items", route: "/admin/custom-pricelist", color: "purple" }, // New
+        { id: "pl-custom", label: "Custom PL / Items", route: "/admin/custom-pricelist", color: "purple" },
         { id: "pl-sync", label: "Sync / Upload", route: "/admin/data-sync", color: "indigo" },
       ]
     },
@@ -175,7 +169,9 @@ const Sidebar = ({ darkMode = true }) => {
 
   return (
     <div
-      className={`flex flex-col h-screen transition-all duration-300
+      className={`flex flex-col h-screen transition-all duration-300 z-50
+      fixed md:relative
+      ${isMobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
       ${isOpen ? "w-64" : "w-20"}
       ${darkMode
           ? "bg-gradient-to-b from-[#6a0dad] to-[#9b4dcc] text-white"
@@ -185,11 +181,21 @@ const Sidebar = ({ darkMode = true }) => {
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-white/20">
         {isOpen && <span className="text-lg font-bold">Maaj</span>}
+
+        {/* Desktop Toggle */}
         <button
           onClick={toggleSidebar}
-          className="p-2 rounded-md hover:bg-white/20"
+          className="p-2 rounded-md hover:bg-white/20 hidden md:block"
         >
           {isOpen ? <FaChevronLeft /> : <FaChevronRight />}
+        </button>
+
+        {/* Mobile Close Button */}
+        <button
+          onClick={onClose}
+          className="p-2 rounded-md hover:bg-white/20 md:hidden"
+        >
+          <FaTimes />
         </button>
       </div>
 
