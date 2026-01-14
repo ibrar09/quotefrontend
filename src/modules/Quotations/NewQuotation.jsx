@@ -575,10 +575,11 @@ const NewQuotation = () => {
   }, [items, adj]);
 
   const handleSave = async (status = 'DRAFT') => {
-    if (!header.storeCcid) {
-      alert('Please select a valid Store/CCID first.');
-      return null;
-    }
+    // REMOVED (User Request): Validation for Store/CCID is now optional
+    // if (!header.storeCcid) {
+    //   alert('Please select a valid Store/CCID first.');
+    //   return null;
+    // }
     try {
       const payload = {
         quote_no: header.quoteNo,
@@ -1164,6 +1165,7 @@ const NewQuotation = () => {
                       exit={{ opacity: 0, x: -10 }}
                       transition={{ duration: 0.15 }}
                       className={`align-top leading-tight uppercase font-semibold text-[10px] group/row ${activeRow === index ? 'bg-blue-50/20' : ''}`}
+                      style={{ zIndex: activeRow === index ? 50 : 1, position: 'relative' }}
                     >
                       <td
                         className={`border border-black p-2 relative cursor-text transition-colors ${activeRow === index && activeField === 'code' ? 'bg-blue-50 ring-1 ring-inset ring-blue-400' : ''}`}
