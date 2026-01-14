@@ -17,6 +17,8 @@ export const ThemeProvider = ({ children }) => {
       orange: darkMode ? "#fbbf24" : "#f59e0b",
       purple: darkMode ? "#a78bfa" : "#8b5cf6",
       gray: darkMode ? "#9ca3af" : "#6b7280",
+      yellow: darkMode ? "#facc15" : "#eab308",
+      teal: darkMode ? "#2dd4bf" : "#14b8a6",
     },
     text: darkMode ? "text-white" : "text-gray-800",
     textSecondary: darkMode ? "text-gray-400" : "text-gray-500",

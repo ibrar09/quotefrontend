@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { FaBell, FaUserCircle, FaSearch, FaSun, FaMoon } from "react-icons/fa";
+import { FaUserCircle, FaSearch, FaSun, FaMoon } from "react-icons/fa";
 import { useTheme } from "../context/ThemeContext";
+import NotificationBell from "./NotificationBell";
 
 const TopBar = ({ pageTitle }) => {
   const { darkMode, toggleTheme, themeStyles } = useTheme(); // get global theme
@@ -44,15 +45,7 @@ const TopBar = ({ pageTitle }) => {
         </button>
 
         {/* Notifications */}
-        <div className="relative">
-          <button className={`p-2 rounded-full transition-all duration-300 relative group ${darkMode ? "hover:bg-white/20" : "hover:bg-gray-100"}`}>
-            <FaBell className={`text-lg ${darkMode ? "text-white" : "text-gray-600"}`} />
-            <span className="absolute -top-1 -right-1 text-[10px] bg-red-500 text-white rounded-full px-1.5 py-0.5 font-bold animate-pulse">
-              3
-            </span>
-            <span className="absolute -top-2 -right-2 w-2 h-2 bg-red-500 rounded-full animate-ping opacity-75"></span>
-          </button>
-        </div>
+        <NotificationBell />
 
         {/* User Profile */}
         <div className="relative">

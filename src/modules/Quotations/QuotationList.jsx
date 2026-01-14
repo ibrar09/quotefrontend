@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
-import { Plus, Edit, Download, Search, RefreshCw } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Plus, Edit, Download, Search, RefreshCw, MapPin, Trash2, Upload } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useTheme } from '../../context/ThemeContext';
 import API_BASE_URL from '../../config/api';
@@ -13,18 +13,53 @@ import QuotationEditModal from './QuotationEditModal';
 const QuotationList = () => {
     const [quotations, setQuotations] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState('ALL');
-    const [searchTerm, setSearchTerm] = useState('');
+    const [searchParams] = useSearchParams();
+    const [regionFilter, setRegionFilter] = useState(searchParams.get('region') || 'ALL');
+    const [statusFilter, setStatusFilter] = useState(searchParams.get('status')?.toUpperCase() || 'ALL');
+    const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
     const [selectedQuotation, setSelectedQuotation] = useState(null);
+    const [importing, setImporting] = useState(false);
+    const [highlightedRow, setHighlightedRow] = useState(null);
     const navigate = useNavigate();
     const { darkMode, colors, themeStyles } = useTheme();
+    const rowRefs = useRef({});
 
-    // Define all available statuses for the filter bar
-    const statuses = ['ALL', 'DRAFT', 'SENT', 'APPROVED', 'REVISED', 'CANCELLED'];
+    // Define all available filters
+    const regions = ['ALL', 'CP', 'CPR', 'EP', 'WP', 'WPR'];
+    const statuses = ['ALL', 'DRAFT', 'SENT', 'APPROVED', 'REVISED', 'COMPLETED', 'CANCELLED'];
 
     useEffect(() => {
+        const urlRegion = searchParams.get('region');
+        const urlStatus = searchParams.get('status');
+        const urlSearch = searchParams.get('search');
+
+        if (urlRegion) setRegionFilter(urlRegion);
+        if (urlStatus) setStatusFilter(urlStatus.toUpperCase());
+        if (urlSearch) {
+            setSearchTerm(urlSearch);
+            // Highlight the row briefly
+            setHighlightedRow(urlSearch);
+            setTimeout(() => setHighlightedRow(null), 3000); // Remove highlight after 3s
+        }
+
         fetchQuotations();
-    }, []);
+    }, [searchParams]);
+
+    // Auto-scroll to highlighted row
+    useEffect(() => {
+        if (highlightedRow && quotations.length > 0) {
+            // Find the matching quotation and scroll to it
+            const matchingQuote = quotations.find(q => q.quote_no === highlightedRow);
+            if (matchingQuote && rowRefs.current[matchingQuote.id]) {
+                setTimeout(() => {
+                    rowRefs.current[matchingQuote.id]?.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center'
+                    });
+                }, 300); // Small delay to ensure table is rendered
+            }
+        }
+    }, [highlightedRow, quotations]);
 
     const fetchQuotations = async () => {
         try {
@@ -38,8 +73,56 @@ const QuotationList = () => {
         }
     };
 
+    const handleDelete = async (id) => {
+        if (!window.confirm('Are you sure you want to delete this quotation? This action cannot be undone.')) return;
+
+        try {
+            const res = await axios.delete(`${API_BASE_URL}/api/quotations/${id}`);
+            if (res.data.success) {
+                alert('Quotation deleted successfully');
+                fetchQuotations(); // Refresh list
+            } else {
+                throw new Error(res.data.message || 'Failed to delete');
+            }
+        } catch (err) {
+            console.error(err);
+            alert(`Error deleting quotation: ${err.message}`);
+        }
+    };
+
+    const handleFileImport = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setImporting(true);
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const res = await axios.post(`${API_BASE_URL}/api/master/upload-quotations`, formData);
+            if (res.data.count > 0) {
+                alert(`Successfully imported ${res.data.count} quotations!`);
+                fetchQuotations(); // Reload the list
+            } else {
+                alert('No new quotations were imported. Please check your CSV format.');
+            }
+        } catch (err) {
+            console.error('Import Error:', err);
+            alert(`Import failed: ${err.response?.data?.error || err.message}`);
+        } finally {
+            setImporting(false);
+            e.target.value = null; // Reset input
+        }
+    };
+
     const filteredQuotations = quotations.filter(q => {
-        const matchesStatus = filter === 'ALL' ? true : q.quote_status === filter;
+        // Region Filter: Check q.region or q.Store.region
+        const qRegion = (q.region || q.Store?.region || '').toUpperCase();
+        const matchesRegion = regionFilter === 'ALL' ? true : qRegion === regionFilter;
+
+        // Status Filter
+        const matchesStatus = statusFilter === 'ALL' ? true : q.quote_status === statusFilter;
+
         const s = searchTerm.toLowerCase();
         const matchesSearch = !searchTerm ||
             (q.quote_no && q.quote_no.toLowerCase().includes(s)) ||
@@ -48,18 +131,20 @@ const QuotationList = () => {
             (q.brand && q.brand.toLowerCase().includes(s)) ||
             (q.Store?.brand && q.Store.brand.toLowerCase().includes(s));
 
-        return matchesStatus && matchesSearch;
+        return matchesRegion && matchesStatus && matchesSearch;
     });
 
     // Helper to style different statuses
     const getStatusColor = (status) => {
         switch (status) {
+            case 'COMPLETED': return 'text-green-600';
             case 'APPROVED': return 'text-green-600';
             case 'SENT': return 'text-blue-500';
-            case 'Approved': return 'text-blue-500';
-            case 'REVISED': return 'text-orange-500';
+            case 'REVISED': return 'text-blue-500';
+            case 'REJECTED': return 'text-red-500';
             case 'CANCELLED': return 'text-red-500';
-            case 'DRAFT': return 'text-gray-500';
+            case 'DRAFT': return 'text-orange-500';
+            case 'INTAKE': return 'text-purple-500';
             default: return darkMode ? 'text-gray-300' : 'text-black';
         }
     };
@@ -135,7 +220,7 @@ const QuotationList = () => {
 
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Quotations');
-        const filename = `Quotations_${filter}_${new Date().toISOString().split('T')[0]}.xlsx`;
+        const filename = `Quotations_${regionFilter}_${statusFilter}_${new Date().toISOString().split('T')[0]}.xlsx`;
         XLSX.writeFile(wb, filename);
     };
 
@@ -152,7 +237,7 @@ const QuotationList = () => {
 
         doc.setFontSize(10);
         doc.setTextColor(100);
-        doc.text(`Status Filter: ${filter}`, 50, 26);
+        doc.text(`Region: ${regionFilter} | Status: ${statusFilter}`, 50, 26);
         doc.text(`Export Date: ${new Date().toLocaleString()}`, 230, 26);
 
         // Draw Line
@@ -222,7 +307,7 @@ const QuotationList = () => {
             }
         });
 
-        const filename = `MAAJ_Tracker_${filter}_${new Date().toISOString().split('T')[0]}.pdf`;
+        const filename = `MAAJ_Tracker_${regionFilter}_${statusFilter}_${new Date().toISOString().split('T')[0]}.pdf`;
         doc.save(filename);
     };
 
@@ -231,8 +316,12 @@ const QuotationList = () => {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6 gap-4">
                 <div>
-                    <h1 className="text-xl md:text-2xl font-black uppercase tracking-wider mb-1">Main Tracking Sheet</h1>
-                    <p className={colors.textSecondary}>Excel Sync: All Companies Sheet 2025</p>
+                    <h1 className="text-xl md:text-2xl font-black uppercase tracking-wider mb-1">
+                        {regionFilter !== 'ALL' ? `${regionFilter} ` : ''}Quotation Tracker
+                    </h1>
+                    <p className={colors.textSecondary}>
+                        {regionFilter !== 'ALL' ? `Viewing quotations for ${regionFilter} region` : 'Excel Sync: All Companies Sheet 2025'}
+                    </p>
                 </div>
                 <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
                     <button
@@ -247,6 +336,31 @@ const QuotationList = () => {
                     >
                         <Download size={16} /> Download Excel
                     </button>
+
+                    {/* CSV Import Section */}
+                    <div className="relative">
+                        <input
+                            type="file"
+                            accept=".csv"
+                            id="csv-import-input"
+                            className="hidden"
+                            onChange={handleFileImport}
+                            disabled={importing}
+                        />
+                        <button
+                            onClick={() => document.getElementById('csv-import-input').click()}
+                            disabled={importing}
+                            className={`${themeStyles.button} ${darkMode ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-indigo-500 hover:bg-indigo-600'} text-white justify-center w-full md:w-auto`}
+                        >
+                            {importing ? (
+                                <RefreshCw size={16} className="animate-spin" />
+                            ) : (
+                                <Upload size={16} />
+                            )}
+                            {importing ? 'Importing...' : 'Import CSV'}
+                        </button>
+                    </div>
+
                     <button
                         onClick={() => navigate('/quotations/new')}
                         className={`${themeStyles.button} w-full md:w-auto justify-center`}
@@ -275,20 +389,47 @@ const QuotationList = () => {
                 </div>
             </div>
 
-            {/* Expanded Filters */}
-            <div className={`flex overflow-x-auto gap-2 border-b ${darkMode ? 'border-gray-700' : 'border-gray-300'} mb-6 pb-2 -mx-4 px-4 md:mx-0 md:px-0`}>
-                {statuses.map(status => (
-                    <button
-                        key={status}
-                        onClick={() => setFilter(status)}
-                        className={`pb-2 px-4 font-bold uppercase transition-colors ${filter === status
-                            ? `border-b-4 ${darkMode ? 'border-[#00a8aa] text-[#00a8aa]' : 'border-black text-black'}`
-                            : 'text-gray-400 hover:text-gray-600'
-                            }`}
-                    >
-                        {status}
-                    </button>
-                ))}
+            {/* Nested Filters: Region and Status */}
+            <div className="flex flex-col gap-4 mb-6">
+                {/* Region Filter Row */}
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 px-1">
+                    <span className={`text-[10px] font-black uppercase tracking-widest min-w-[60px] ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Region:</span>
+                    <div className="flex gap-2">
+                        {regions.map(reg => (
+                            <button
+                                key={reg}
+                                onClick={() => setRegionFilter(reg)}
+                                className={`px-4 py-1.5 rounded-full font-black uppercase text-[9px] transition-all border-2 flex items-center gap-1
+                                ${regionFilter === reg
+                                        ? `bg-[#00a8aa] text-white border-[#00a8aa] shadow-lg scale-105`
+                                        : `${darkMode ? 'bg-gray-800 border-gray-700 text-gray-400' : 'bg-white border-gray-300 text-gray-500'} hover:border-[#00a8aa]`
+                                    }`}
+                            >
+                                <MapPin size={10} /> {reg === 'ALL' ? 'All Regions' : reg}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Status Filter Row */}
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 px-1">
+                    <span className={`text-[10px] font-black uppercase tracking-widest min-w-[60px] ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Status:</span>
+                    <div className="flex gap-2">
+                        {statuses.map(status => (
+                            <button
+                                key={status}
+                                onClick={() => setStatusFilter(status)}
+                                className={`px-4 py-1.5 rounded-full font-black uppercase text-[9px] transition-all border-2
+                                ${statusFilter === status
+                                        ? `bg-black text-white border-black shadow-lg scale-105`
+                                        : `${darkMode ? 'bg-gray-800 border-gray-700 text-gray-400' : 'bg-white border-gray-300 text-gray-500'} hover:border-black`
+                                    }`}
+                            >
+                                {status === 'ALL' ? 'All Statuses' : status}
+                            </button>
+                        ))}
+                    </div>
+                </div>
             </div>
 
             {/* Table */}
@@ -298,7 +439,6 @@ const QuotationList = () => {
                         <tr className={themeStyles.tableHeader}>
                             <th className="p-2 border-r">Actions</th>
                             <th className="p-2 border-r">SR#</th>
-                            <th className="p-2 border-r">Company</th>
                             <th className="p-2 border-r">Quote Date</th>
                             <th className="p-2 border-r text-center">Status</th>
                             <th className="p-2 border-r">Quote #</th>
@@ -313,11 +453,14 @@ const QuotationList = () => {
                             <th className="p-2 border-r">Work Status</th>
                             <th className="p-2 border-r">Comp Date</th>
                             <th className="p-2 border-r">Completed By</th>
+                            <th className="p-2 border-r text-center">Check-In</th>
+                            <th className="p-2 border-r">Notes (CP)</th>
                             <th className="p-2 border-r">PO #</th>
                             <th className="p-2 border-r">PO Date</th>
                             <th className="p-2 border-r">ETA</th>
                             <th className="p-2 border-r">Update</th>
                             <th className="p-2 border-r text-right">Amt Ex VAT</th>
+                            <th className="p-2 border-r text-right">Discount</th>
                             <th className="p-2 border-r text-right">VAT</th>
                             <th className="p-2 border-r text-right">Total</th>
                             <th className="p-2 border-r">Inv Status</th>
@@ -349,14 +492,27 @@ const QuotationList = () => {
                             </tr>
                         ) : filteredQuotations.length === 0 ? (
                             <tr>
-                                <td colSpan="40" className="p-8 text-center opacity-50">No quotations found for this status.</td>
+                                <td colSpan="40" className="p-8 text-center opacity-50 font-bold uppercase tracking-widest">
+                                    No records found for {regionFilter !== 'ALL' ? `${regionFilter} Region` : 'Any Region'}
+                                    {statusFilter !== 'ALL' ? ` with ${statusFilter} Status.` : '.'}
+                                </td>
                             </tr>
                         ) : filteredQuotations.map((q, i) => {
                             const po = q.PurchaseOrders?.[0] || {};
                             const fin = po.Finance || {};
+                            const isHighlighted = highlightedRow && q.quote_no === highlightedRow;
 
                             return (
-                                <tr key={q.id} className={themeStyles.tableRow}>
+                                <tr
+                                    key={q.id}
+                                    ref={el => rowRefs.current[q.id] = el}
+                                    className={`${themeStyles.tableRow} transition-all duration-500 ${isHighlighted ? 'ring-2 ring-blue-500' : ''}`}
+                                    style={{
+                                        backgroundColor: isHighlighted
+                                            ? (darkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)')
+                                            : undefined
+                                    }}
+                                >
                                     <td className="p-2 text-center">
                                         <div className="flex items-center justify-center gap-2">
                                             <button
@@ -373,10 +529,16 @@ const QuotationList = () => {
                                             >
                                                 <Edit size={14} />
                                             </button>
+                                            <button
+                                                onClick={() => handleDelete(q.id)}
+                                                className="hover:scale-110 transition-transform p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md text-red-500"
+                                                title="Delete Quotation"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
                                         </div>
                                     </td>
                                     <td className="p-2 text-center opacity-60">{i + 1}</td>
-                                    <td className="p-2">{q.brand_name || q.Store?.brand || '-'}</td>
                                     <td className="p-2">{q.sent_at || '-'}</td>
 
                                     {/* Quotation Status Column */}
@@ -396,18 +558,25 @@ const QuotationList = () => {
                                     <td className="p-2 font-bold text-green-600">{q.work_status || '-'}</td>
                                     <td className="p-2">{q.completion_date || '-'}</td>
                                     <td className="p-2">{q.completed_by || '-'}</td>
+                                    <td className="p-2 text-center text-[8px] leading-tight">
+                                        {q.check_in_date || '-'}<br />{q.check_in_time || ''}
+                                    </td>
+                                    <td className="p-2 truncate max-w-[100px]" title={q.craftsperson_notes}>
+                                        {q.craftsperson_notes || '-'}
+                                    </td>
                                     <td className="p-2 font-bold text-green-600">{po.po_no || '-'}</td>
                                     <td className="p-2">{po.po_date || '-'}</td>
                                     <td className="p-2">{po.eta || '-'}</td>
                                     <td className="p-2">{po.update_notes || '-'}</td>
                                     <td className="p-2 text-right">{po.amount_ex_vat || q.subtotal || '0.00'}</td>
+                                    <td className="p-2 text-right text-red-500">-{q.discount || '0.00'}</td>
                                     <td className="p-2 text-right">{po.vat_15 || q.vat_amount || '0.00'}</td>
                                     <td className="p-2 text-right font-bold">{po.total_inc_vat || q.grand_total || '0.00'}</td>
                                     <td className="p-2 font-bold text-green-600">{fin.invoice_status || '-'}</td>
                                     <td className="p-2 font-bold text-green-600">{fin.invoice_no || '-'}</td>
                                     <td className="p-2">{fin.invoice_date || '-'}</td>
                                     <td className="p-2">{q.supervisor || '-'}</td>
-                                    <td className="p-2">{q.comments || '-'}</td>
+                                    <td className="p-2 truncate max-w-[150px]" title={q.comments}>{q.comments || '-'}</td>
                                     <td className="p-2">{q.oracle_ccid || '-'}</td>
                                     <td className="p-2 text-right">{fin.advance_payment || '0.00'}</td>
                                     <td className="p-2">{fin.payment_ref || '-'}</td>
