@@ -1110,9 +1110,9 @@ const NewQuotation = () => {
                 style={{ color: 'black' }}
                 value={header.description}
                 onChange={(e) => handleHeaderChange('description', e.target.value)}
-                placeholder="Describe the scope of work..."
+                placeholder="Enter final comments..."
                 spellCheck={true}
-                lang="en"
+                lang="en-US"
                 onKeyDown={(e) => handleHeaderKeyDown(e, 'mrDesc')}
                 onFocus={(e) => e.target.select()}
               />
@@ -1255,10 +1255,9 @@ const NewQuotation = () => {
                           placeholder="Item Description..."
                           value={item.description}
                           rows={1}
-                          onInput={(e) => {
-                            e.target.style.height = 'auto';
-                            e.target.style.height = e.target.scrollHeight + 'px';
-                          }}
+                          onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
+                          spellCheck={true}
+                          lang="en-US"
                           ref={(el) => {
                             if (el) {
                               el.style.height = 'auto';
