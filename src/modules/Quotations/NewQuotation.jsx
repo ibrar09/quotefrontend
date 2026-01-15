@@ -1106,7 +1106,7 @@ const NewQuotation = () => {
                 name="description"
                 data-row="header"
                 data-col="mrDesc"
-                className="w-full outline-none font-semibold uppercase bg-transparent resize-none h-24 leading-tight no-print text-black"
+                className="w-full outline-none font-semibold bg-transparent resize-none h-24 leading-tight no-print text-black"
                 style={{ color: 'black' }}
                 value={header.description}
                 onChange={(e) => handleHeaderChange('description', e.target.value)}
@@ -1129,7 +1129,7 @@ const NewQuotation = () => {
                 data-row="header"
                 data-col="openingDate"
                 type="date"
-                className="w-full outline-none font-semibold uppercase bg-transparent no-print"
+                className="w-full outline-none font-semibold bg-transparent no-print"
                 value={header.openingDate}
                 onChange={(e) => handleHeaderChange('openingDate', e.target.value)}
                 onKeyDown={(e) => handleHeaderKeyDown(e, 'openingDate')}
@@ -1149,7 +1149,7 @@ const NewQuotation = () => {
                 data-row="header"
                 data-col="continuous_assessment"
                 rows={3}
-                className="w-full resize-none outline-none font-semibold uppercase bg-transparent no-print text-black"
+                className="w-full resize-none outline-none font-semibold bg-transparent no-print text-black"
                 style={{ color: 'black' }}
                 placeholder="Continuous assessment notes..."
                 value={header.continuous_assessment || ''}
@@ -1283,7 +1283,7 @@ const NewQuotation = () => {
                         <input
                           data-row={index}
                           data-col="unit"
-                          className="w-full outline-none text-center bg-transparent no-print font-bold uppercase"
+                          className="w-full outline-none text-center bg-transparent no-print font-bold"
                           value={item.unit}
                           onChange={(e) => handleItemChange(item.id, 'unit', e.target.value)}
                           onFocus={(e) => {
