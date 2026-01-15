@@ -41,11 +41,24 @@ export const updateQuotation = async (req, res) => {
     });
   } catch (error) {
     console.error('Update quotation error:', error);
-    console.error('Error details:', error.message);
-    if (error.errors) {
-      console.error('Validation Errors:', JSON.stringify(error.errors, null, 2));
+
+    // Check for Unique Constraint Error (e.g. Duplicate PO or Invoice)
+    if (error.name === 'SequelizeUniqueConstraintError') {
+      const field = error.errors[0]?.path || 'field';
+      const value = error.errors[0]?.value || '';
+      return res.status(400).json({
+        success: false,
+        message: `Duplicate entry error: The ${field} '${value}' is already used by another record.`
+      });
     }
-    console.error('Request body:', JSON.stringify(req.body, null, 2));
+
+    if (error.name === 'SequelizeValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: `Validation error: ${error.errors.map(e => e.message).join(', ')}`
+      });
+    }
+
     res.status(400).json({
       success: false,
       message: error.message,

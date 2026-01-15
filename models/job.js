@@ -35,16 +35,15 @@ const Job = sequelize.define('Job', {
   // 🔹 QUOTATION STATUS (Lifecycle)
   quote_status: {
     type: DataTypes.ENUM(
-      'INTAKE',
-      'PREVIEW',
       'DRAFT',
+      'READY_TO_SEND',
       'SENT',
-      'REVISED',
+      'PO_RECEIVED',
       'APPROVED',
-      'REJECTED',
-      'COMPLETED'
+      'PAID',
+      'CANCELLED'
     ),
-    defaultValue: 'INTAKE'
+    defaultValue: 'DRAFT'
   },
 
   // 🔹 WORK STATUS (Execution)

@@ -10,7 +10,9 @@ import JobImage from './jobImage.js';
 import Notification from './notification.js';
 import CustomStore from './customStore.js';
 import CustomPriceList from './customPriceList.js';
+import ClientGroup from './clientGroup.js';
 
+// Relations
 // Relations
 Store.hasMany(Job, { foreignKey: 'oracle_ccid', constraints: false });
 Job.belongsTo(Store, { foreignKey: 'oracle_ccid', constraints: false });
@@ -31,9 +33,8 @@ Job.hasMany(Notification, { foreignKey: 'job_id', onDelete: 'CASCADE' });
 Notification.belongsTo(Job, { foreignKey: 'job_id' });
 
 // Named exports (optional)
-// Named exports (optional)
-export { PriceList, Job, JobItem, PurchaseOrder, Finance, Store, JobImage, Notification, CustomStore, CustomPriceList, sequelize };
+export { PriceList, Job, JobItem, PurchaseOrder, Finance, Store, JobImage, Notification, CustomStore, CustomPriceList, ClientGroup, sequelize };
 
 // ✅ Default export (so your seed scripts can import db)
-const db = { PriceList, Job, JobItem, PurchaseOrder, Finance, Store, JobImage, Notification, CustomStore, CustomPriceList, sequelize };
+const db = { PriceList, Job, JobItem, PurchaseOrder, Finance, Store, JobImage, Notification, CustomStore, CustomPriceList, ClientGroup, sequelize };
 export default db;

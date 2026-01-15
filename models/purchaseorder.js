@@ -4,8 +4,7 @@ import sequelize from '../config/db.js'; // ✅ note the .js extension
 const PurchaseOrder = sequelize.define('PurchaseOrder', {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
     po_no: {
-        type: DataTypes.STRING,
-        unique: true
+        type: DataTypes.STRING
     },
     job_id: {
         type: DataTypes.INTEGER,

@@ -11,10 +11,12 @@ import pdfRoutes from './pdf.routes.js';
 import masterRoutes from './master.routes.js';
 import dashboardRoutes from './dashboard.routes.js';
 import notificationRoutes from './notification.routes.js';
+import clientGroupRoutes from './clientGroup.routes.js'; // [NEW]
 const router = express.Router();
 
 // 🔹 Mount all routes
 router.use('/notifications', notificationRoutes);
+router.use('/client-groups', clientGroupRoutes); // [NEW]
 router.use('/dashboard', dashboardRoutes);
 router.use('/quotations', quotationRoutes);
 router.use('/jobitems', jobItemRoutes);

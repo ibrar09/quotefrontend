@@ -143,11 +143,8 @@ export const updateQuotation = async (jobId, data) => {
     let po = await PurchaseOrder.findOne({ where: { job_id: jobId } });
 
     if (po) {
-      // Use static update to safely handle PK changes if any
-      const oldPoNo = po.po_no;
-      await PurchaseOrder.update(poData, { where: { po_no: oldPoNo } });
-      // Re-fetch to get updated state (including cascaded FKs if synced)
-      po = await PurchaseOrder.findOne({ where: { job_id: jobId } });
+      // ✅ Use instance update to safely handle PK changes and avoid updating unintended records
+      await po.update(poData);
     } else {
       po = await PurchaseOrder.create({ ...poData, job_id: jobId });
     }
@@ -162,11 +159,14 @@ export const updateQuotation = async (jobId, data) => {
         finData.invoice_status = 'NOT_SUBMITTED';
       }
 
-      let fin = await Finance.findOne({ where: { po_no: po.po_no } });
-      if (fin) {
-        await fin.update(finData);
-      } else {
-        await Finance.create({ ...finData, po_no: po.po_no });
+      // Check if PO number is valid before trying to link finance
+      if (po.po_no) {
+        let fin = await Finance.findOne({ where: { po_no: po.po_no } });
+        if (fin) {
+          await fin.update(finData);
+        } else {
+          await Finance.create({ ...finData, po_no: po.po_no });
+        }
       }
     }
   }

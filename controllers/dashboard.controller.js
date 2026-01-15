@@ -14,8 +14,16 @@ export const getDashboardStats = async (req, res) => {
         });
 
         const statusMap = {};
+        // Initialize all main keys to 0
+        ['DRAFT', 'READY_TO_SEND', 'SENT', 'PO_RECEIVED', 'APPROVED', 'PAID', 'CANCELLED'].forEach(k => statusMap[k] = 0);
+
+        console.log('📊 [DASHBOARD] Raw DB Counts:', statusCounts.map(s => `${s.quote_status}: ${s.getDataValue('count')}`).join(', '));
+
         statusCounts.forEach(s => {
-            statusMap[s.quote_status] = parseInt(s.get('count'));
+            const status = s.quote_status;
+            if (status) {
+                statusMap[status] = parseInt(s.get('count')) || 0;
+            }
         });
 
         // 2. Financial Calculations
@@ -47,13 +55,15 @@ export const getDashboardStats = async (req, res) => {
 
         const stats = {
             counts: {
-                need_to_send: statusMap['DRAFT'] || 0,
-                sent: statusMap['SENT'] || statusMap['REVISED'] || 0,
-                approved: statusMap['APPROVED'] || 0,
-                completed: statusMap['COMPLETED'] || 0,
-                rejected: statusMap['REJECTED'] || statusMap['CANCELLED'] || 0,
+                need_to_send: (statusMap['DRAFT'] || 0) + (statusMap['READY_TO_SEND'] || 0),
+                sent: (statusMap['SENT'] || 0),
+                approved: (statusMap['APPROVED'] || 0),
+                completed: statusMap['PO_RECEIVED'] || 0,
+                rejected: statusMap['CANCELLED'] || 0,
                 intake: statusMap['INTAKE'] || 0,
-                paid_count: paidCount
+                paid_count: (statusMap['PAID'] || 0) + paidCount,
+                // [NEW] Raw Breakdown for detailed graph
+                raw: statusMap
             },
             financials: {
                 total_paid: totalPaid,
