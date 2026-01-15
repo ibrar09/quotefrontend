@@ -911,6 +911,8 @@ const NewQuotation = () => {
                 onChange={(e) => handleHeaderChange('attentionTo', e.target.value)}
                 onKeyDown={(e) => handleHeaderKeyDown(e, 'attentionTo')}
                 onFocus={(e) => e.target.select()}
+                spellCheck={true}
+                lang="en"
               />
               <span className="print-only text-black">{header.attentionTo}</span>
             </div>
@@ -1101,13 +1103,16 @@ const NewQuotation = () => {
             <div className="col-span-1 bg-gray-200 border-r border-b border-black p-1 text-[9px] font-bold uppercase text-black">MR Desc.</div>
             <div className="col-span-7 border-r border-b border-black p-1.5">
               <textarea
+                name="description"
                 data-row="header"
                 data-col="mrDesc"
-                className="w-full outline-none font-semibold uppercase bg-transparent resize-none h-8 leading-tight no-print text-black"
+                className="w-full outline-none font-semibold uppercase bg-transparent resize-none h-24 leading-tight no-print text-black"
                 style={{ color: 'black' }}
-                value={header.mrDesc || header.description}
-                onChange={(e) => handleHeaderChange('mrDesc', e.target.value)}
-                placeholder="ENTER WORK DESCRIPTION HERE..."
+                value={header.description}
+                onChange={(e) => handleHeaderChange('description', e.target.value)}
+                placeholder="Describe the scope of work..."
+                spellCheck={true}
+                lang="en"
                 onKeyDown={(e) => handleHeaderKeyDown(e, 'mrDesc')}
                 onFocus={(e) => e.target.select()}
               />
