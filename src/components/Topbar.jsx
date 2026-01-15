@@ -8,6 +8,13 @@ const TopBar = ({ pageTitle, onMenuClick }) => {
   const { darkMode, toggleTheme, themeStyles } = useTheme(); // get global theme
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const handleSearch = (e) => {
+    if (e.key === 'Enter') {
+      navigate(`/quotations/list?search=${encodeURIComponent(searchQuery)}`);
+    }
+  };
 
   return (
     <div
@@ -54,14 +61,20 @@ const TopBar = ({ pageTitle, onMenuClick }) => {
         <div className="relative">
           <input
             type="text"
-            placeholder="Search..."
+            placeholder="Search Quote #, MR #, PO #, Brand..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={handleSearch}
             className={`pl-10 pr-4 py-2 rounded-full border text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 shadow-sm transition-all duration-300
               ${darkMode
                 ? "bg-gray-900 border-gray-700 text-gray-200 placeholder-gray-500"
                 : "bg-white border-gray-200 text-gray-700"
               }`}
           />
-          <FaSearch className={`absolute left-3 top-1/2 -translate-y-1/2 text-sm ${darkMode ? "text-gray-400" : "text-gray-400"}`} />
+          <FaSearch
+            onClick={() => navigate(`/quotations/list?search=${encodeURIComponent(searchQuery)}`)}
+            className={`absolute left-3 top-1/2 -translate-y-1/2 text-sm cursor-pointer ${darkMode ? "text-gray-400" : "text-gray-400"}`}
+          />
         </div>
 
         {/* Theme Toggle */}

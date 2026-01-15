@@ -18,6 +18,46 @@ const Sidebar = ({ darkMode = true, isMobileOpen = false, onClose }) => {
       route: "/",
     },
     {
+      id: "brand-alshaya",
+      label: "Alshaya",
+      icon: "🏢",
+      subItems: [
+        {
+          id: "alshaya-tracker",
+          label: "📋 Quotation Tracker",
+          route: "/quotations/list?brand=Alshaya", // Filtered List
+          color: "blue",
+        },
+        {
+          id: "alshaya-new",
+          label: "➕ New Quotation",
+          route: "/quotations/new-quotation",
+          state: { brand: 'Alshaya' },
+          color: "green",
+        },
+        {
+          id: "alshaya-intake",
+          label: "📥 Intake Tracker",
+          route: "/quotations/intakes", // Eventually filter this too
+          color: "yellow",
+        }
+      ],
+    },
+    {
+      id: "brand-structure",
+      label: "Structure",
+      icon: "🏗️",
+      subItems: [
+        {
+          id: "structure-tracker",
+          label: "📋 Quotation Tracker",
+          route: "/quotations/list?brand=Structure",
+          color: "orange",
+        },
+        // Add more Structure specific items here
+      ]
+    },
+    {
       id: "quotations",
       label: "Quotations",
       icon: "📝",
@@ -95,6 +135,31 @@ const Sidebar = ({ darkMode = true, isMobileOpen = false, onClose }) => {
       ],
     },
     {
+      id: "finance",
+      label: "Job Completion",
+      icon: "💰",
+      subItems: [
+        {
+          id: "fin-po-recv",
+          label: "📜 PO Received",
+          route: "/quotations/list?status=PO_RECEIVED",
+          color: "blue",
+        },
+        {
+          id: "fin-approved",
+          label: "✅ Ready for Invoice",
+          route: "/quotations/list?status=APPROVED",
+          color: "green",
+        },
+        {
+          id: "fin-paid",
+          label: "💵 Invoice Paid",
+          route: "/quotations/list?status=PAID",
+          color: "green",
+        },
+      ],
+    },
+    {
       id: "master-data",
       label: "Master Data (AOR)",
       icon: "🗄️",
@@ -127,27 +192,35 @@ const Sidebar = ({ darkMode = true, isMobileOpen = false, onClose }) => {
     }
   };
 
-  const handleSubClick = (route) => {
-    navigate(route);
+  const handleSubClick = (subItem) => {
+    if (typeof subItem === 'string') {
+      navigate(subItem);
+    } else {
+      navigate(subItem.route, { state: subItem.state });
+    }
   };
 
   const isActiveRoute = (itemRoute) => {
     if (!itemRoute) return false;
 
-    // Exact match for both path and query string
-    const currentFull = location.pathname + location.search;
+    // Decode current location for robust comparison
+    const currentPath = location.pathname;
+    const currentSearch = decodeURIComponent(location.search);
+    const itemFull = decodeURIComponent(itemRoute);
 
-    // Normalizing paths (ensuring /quotations/list doesn't match /quotations/list?region=CP)
+    // 1. Direct Exact Match (Handle case where items have query params)
     if (itemRoute.includes('?')) {
-      return currentFull === itemRoute;
+      const currentFull = currentPath + currentSearch;
+      return currentFull === itemFull;
     }
 
-    // If itemRoute is the base list, only highlight if current search is empty
-    if (itemRoute === '/quotations/list') {
-      return location.pathname === '/quotations/list' && !location.search;
+    // 2. Base Route (e.g. /quotations/list) should ONLY match if no query params exist
+    // This prevents "Quotation Tracker" from being active when "Alshaya" (?brand=Alshaya) is active
+    if (itemRoute === currentPath) {
+      return !currentSearch;
     }
 
-    return location.pathname === itemRoute;
+    return false;
   };
 
   const getBadgeClass = (color) => {
@@ -230,7 +303,7 @@ const Sidebar = ({ darkMode = true, isMobileOpen = false, onClose }) => {
                   {item.subItems.map((sub) => (
                     <li key={sub.id}>
                       <div
-                        onClick={() => handleSubClick(sub.route)}
+                        onClick={() => handleSubClick(sub)}
                         className={`flex items-center justify-between px-3 py-1 text-xs rounded-md cursor-pointer
                         ${isActiveRoute(sub.route)
                             ? "bg-white/50 font-bold border-l-2 border-white"

@@ -27,12 +27,14 @@ const DashboardGraphs = () => {
     fetchStats();
   }, []);
 
-  const barData = stats ? [
-    { name: "Draft", value: stats.counts.need_to_send, color: colors.cardColors.orange },
-    { name: "Sent", value: stats.counts.sent, color: colors.cardColors.blue },
-    { name: "Approved", value: stats.counts.approved, color: colors.cardColors.yellow },
-    { name: "Completed", value: stats.counts.completed, color: colors.cardColors.green },
-    { name: "Cancelled", value: stats.counts.rejected, color: colors.cardColors.red },
+  const barData = stats && stats.counts.raw ? [
+    { name: "Draft", value: stats.counts.raw['DRAFT'] || 0, color: colors.cardColors.orange },
+    { name: "Ready", value: stats.counts.raw['READY_TO_SEND'] || 0, color: colors.cardColors.indigo },
+    { name: "Sent", value: stats.counts.raw['SENT'] || 0, color: colors.cardColors.blue },
+    { name: "PO Recv", value: stats.counts.raw['PO_RECEIVED'] || 0, color: colors.cardColors.cyan },
+    { name: "Apprv", value: stats.counts.raw['APPROVED'] || 0, color: colors.cardColors.green },
+    { name: "Paid", value: (stats.counts.raw['PAID'] || 0), color: colors.cardColors.yellow },
+    { name: "Cancel", value: stats.counts.raw['CANCELLED'] || 0, color: colors.cardColors.red },
   ] : [];
 
   const formatCurrency = (val) => {

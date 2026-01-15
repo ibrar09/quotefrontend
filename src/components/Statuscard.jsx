@@ -11,29 +11,37 @@ const CardsSection = () => {
   const { darkMode, colors } = useTheme();
   const [stats, setStats] = React.useState(null);
 
-  React.useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        console.log('🔍 [DASHBOARD] Fetching stats from:', `${API_BASE_URL}/api/dashboard/stats`);
-        const res = await axios.get(`${API_BASE_URL}/api/dashboard/stats`);
-        console.log('✅ [DASHBOARD] Stats response:', res.data);
-        if (res.data.success) {
-          setStats(res.data.data);
-          console.log('✅ [DASHBOARD] Stats set:', res.data.data);
-        }
-      } catch (err) {
-        console.error("❌ [DASHBOARD] Failed to fetch stats:", err);
-        console.error("❌ [DASHBOARD] Error details:", err.response?.data || err.message);
+  const fetchStats = async () => {
+    try {
+      const res = await axios.get(`${API_BASE_URL}/api/dashboard/stats`);
+      if (res.data.success) {
+        setStats(res.data.data);
       }
-    };
+    } catch (err) {
+      console.error("❌ [DASHBOARD] Failed to fetch stats:", err);
+    }
+  };
+
+  React.useEffect(() => {
     fetchStats();
+    // Refresh stats every 30 seconds to keep counts live
+    const interval = setInterval(fetchStats, 30000);
+
+    // Also refresh on window focus for immediate updates after returning from another tab
+    const handleFocus = () => fetchStats();
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, []);
 
   const handleCardClick = (card) => {
-    if (card.key === "need_to_send") return navigate("/quotations/list?status=DRAFT");
+    if (card.key === "need_to_send") return navigate("/quotations/list?status=READY_TO_SEND"); // Default to Ready
     if (card.key === "sent") return navigate("/quotations/list?status=SENT");
-    if (card.key === "completed") return navigate("/quotations/list?status=COMPLETED");
-    if (card.key === "payment_complete") return navigate("/quotations/list?status=APPROVED");
+    if (card.key === "completed") return navigate("/quotations/list?status=PO_RECEIVED");
+    if (card.key === "payment_complete") return navigate("/quotations/list?status=PAID");
     if (card.key === "invoices_ready") return navigate("/quotations/list?status=APPROVED");
     if (card.key === "payments_pending") return navigate("/quotations/list?status=APPROVED");
     navigate(card.link);
@@ -43,10 +51,10 @@ const CardsSection = () => {
     if (!stats) return "...";
     if (key === "need_to_send") return stats.counts.need_to_send;
     if (key === "sent") return stats.counts.sent;
-    if (key === "completed") return stats.counts.completed;
+    if (key === "completed") return stats.counts.completed; // Now maps to PO_RECEIVED in backend
     if (key === "payment_complete") return stats.counts.paid_count || 0;
-    if (key === "invoices_ready") return stats.counts.approved; // Approved jobs ready for invoice
-    if (key === "payments_pending") return stats.counts.approved; // Same logic for now
+    if (key === "invoices_ready") return stats.counts.approved;
+    if (key === "payments_pending") return stats.counts.approved;
     return 0;
   };
 

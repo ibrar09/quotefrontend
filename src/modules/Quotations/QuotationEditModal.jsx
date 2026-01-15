@@ -21,7 +21,7 @@ const Input = ({ label, value, onChange, type = "text", placeholder = "", darkMo
     </div>
 );
 
-const QuotationEditModal = ({ quotation, onClose, onUpdated }) => {
+const QuotationEditModal = ({ quotation, onClose, onUpdate }) => {
     const { darkMode } = useTheme();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -214,7 +214,7 @@ const QuotationEditModal = ({ quotation, onClose, onUpdated }) => {
                 })),
                 PurchaseOrders: formData.PurchaseOrders.map(po => {
                     // FORCE UNIQUE PO NUMBER if it is generic
-                    let finalPoNo = po.po_no || '';
+                    let finalPoNo = po.po_no || null;
                     if (finalPoNo === 'PO-EMAIL' || finalPoNo === 'PO-PHONE') {
                         finalPoNo = `${finalPoNo}-${formData.quote_no}`;
                     }
@@ -252,7 +252,7 @@ const QuotationEditModal = ({ quotation, onClose, onUpdated }) => {
 
             console.log('Saving payload:', payload);
             await axios.put(`${API_BASE_URL}/api/quotations/${quotation.id}`, payload);
-            onUpdated();
+            if (onUpdate) onUpdate();
             onClose();
         } catch (err) {
             console.error("Update failed", err);
@@ -344,11 +344,12 @@ const QuotationEditModal = ({ quotation, onClose, onUpdated }) => {
                                         }`}
                                 >
                                     <option value="DRAFT">Draft</option>
+                                    <option value="READY_TO_SEND">Ready to Send</option>
                                     <option value="SENT">Sent</option>
-                                    <option value="REVISED">Revised</option>
+                                    <option value="PO_RECEIVED">PO Received</option>
                                     <option value="APPROVED">Approved</option>
-                                    <option value="REJECTED">Rejected</option>
-                                    <option value="INTAKE">Intake</option>
+                                    <option value="PAID">Paid</option>
+                                    <option value="CANCELLED">Cancelled</option>
                                 </select>
                             </div>
 
