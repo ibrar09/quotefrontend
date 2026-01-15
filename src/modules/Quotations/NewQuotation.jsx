@@ -124,24 +124,8 @@ const NewQuotation = () => {
         }));
 
         // Auto-fill items from latest job ONLY if current items are empty or just the default row
-        if (jobs.length > 0 && items.length === 1 && !items[0].code && !items[0].description) {
-          const latestJob = jobs[0];
-          if (latestJob.JobItems && latestJob.JobItems.length > 0) {
-            setItems(latestJob.JobItems.map(ji => {
-              const material = Number(ji.material_price) || 0;
-              const labor = Number(ji.labor_price) || 0;
-              return {
-                id: crypto.randomUUID(),
-                code: ji.item_code || '',
-                description: ji.description || '',
-                unit: ji.unit || 'PCS',
-                qty: ji.quantity || 1,
-                material: material,
-                labor: labor
-              };
-            }));
-          }
-        }
+        // Auto-fill items REMOVED as per user request (Step 2404). 
+        // We only want Store Details, not previous job items.
         setStoreStatus('success');
         return true;
       } else {
