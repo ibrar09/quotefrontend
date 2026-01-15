@@ -1,11 +1,13 @@
 import React, { useState } from "react";
-import { FaUserCircle, FaSearch, FaSun, FaMoon, FaBars } from "react-icons/fa";
+import { FaUserCircle, FaSearch, FaSun, FaMoon, FaBars, FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 import { useTheme } from "../context/ThemeContext";
 import NotificationBell from "./NotificationBell";
 
 const TopBar = ({ pageTitle, onMenuClick }) => {
   const { darkMode, toggleTheme, themeStyles } = useTheme(); // get global theme
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const navigate = useNavigate();
 
   return (
     <div
@@ -15,7 +17,7 @@ const TopBar = ({ pageTitle, onMenuClick }) => {
           : "bg-gradient-to-r from-white to-gray-100 border-gray-200 text-gray-800"
         }`}
     >
-      {/* Page Title */}
+      {/* Page Title & Navigation */}
       <div className="flex items-center space-x-4">
         {/* Mobile Menu Button */}
         <button
@@ -24,6 +26,25 @@ const TopBar = ({ pageTitle, onMenuClick }) => {
         >
           <FaBars className="text-xl" />
         </button>
+
+        {/* Global Navigation Buttons */}
+        <div className="hidden md:flex items-center gap-1 mr-2">
+          <button
+            onClick={() => navigate(-1)}
+            className={`p-1.5 rounded-full transition-all hover:scale-110 active:scale-95 ${darkMode ? 'hover:bg-white/10 text-white/80' : 'hover:bg-black/5 text-gray-500'}`}
+            title="Go Back"
+          >
+            <FaChevronLeft size={14} />
+          </button>
+          <button
+            onClick={() => navigate(1)}
+            className={`p-1.5 rounded-full transition-all hover:scale-110 active:scale-95 ${darkMode ? 'hover:bg-white/10 text-white/80' : 'hover:bg-black/5 text-gray-500'}`}
+            title="Go Forward"
+          >
+            <FaChevronRight size={14} />
+          </button>
+        </div>
+
         <h1 className="text-lg md:text-xl font-bold transition-colors duration-300">{pageTitle}</h1>
       </div>
 

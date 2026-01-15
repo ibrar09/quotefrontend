@@ -51,6 +51,30 @@ const QuotationList = () => {
     const [startX, setStartX] = useState(0);
     const [scrollLeft, setScrollLeft] = useState(0);
 
+    // [NEW] Copy Helper
+    const copyToClipboard = async (text, label) => {
+        if (!text) return;
+        try {
+            await navigator.clipboard.writeText(text);
+            // Optional: Simple toast or Alert, but standard is subtle. 
+            // Let's use a quick alert or better, assume user knows.
+            // For now, let's show a small visual queue or nothing if user is fast.
+            // Actually user asked for ease.
+        } catch (err) {
+            console.error('Failed to copy', err);
+        }
+    };
+
+    const handleCellDoubleClick = (e, text, label) => {
+        if (!text) return;
+        e.stopPropagation(); // Prevent row selection if any
+        copyToClipboard(text, label);
+        // Show tooltip or temporary indicator?
+        // Let's rely on standard browser behavior or just a small visual feedback if possible.
+        // For simplicity:
+        alert(`Copied ${label}: ${text}`);
+    };
+
     const handleMouseDown = (e) => {
         setIsDragging(true);
         setStartX(e.pageX - tableContainerRef.current.offsetLeft);
@@ -575,17 +599,17 @@ const QuotationList = () => {
                                         </div>
                                     </td>
                                     <td className="p-2 text-center opacity-60">{i + 1}</td>
-                                    <td className="p-2">{q.sent_at || '-'}</td>
+                                    <td onDoubleClick={(e) => handleCellDoubleClick(e, q.sent_at, 'Date')} className="p-2 cursor-copy hover:bg-black/5" title="Double-click to copy">{q.sent_at || '-'}</td>
 
                                     {/* Quotation Status Column */}
                                     <td className={`p-2 font-bold text-center border-r ${getStatusColor(q.quote_status)}`}>
                                         {q.quote_status || 'DRAFT'}
                                     </td>
 
-                                    <td className="p-2 font-bold">{q.quote_no}</td>
-                                    <td className="p-2">{q.mr_date || '-'}</td>
-                                    <td className="p-2">{q.mr_no || '-'}</td>
-                                    <td className="p-2">{q.pr_no || '-'}</td>
+                                    <td onDoubleClick={(e) => handleCellDoubleClick(e, q.quote_no, 'Quote No')} className="p-2 font-bold cursor-copy hover:bg-black/5" title="Double-click to copy">{q.quote_no}</td>
+                                    <td onDoubleClick={(e) => handleCellDoubleClick(e, q.mr_date, 'MR Date')} className="p-2 cursor-copy hover:bg-black/5" title="Double-click to copy">{q.mr_date || '-'}</td>
+                                    <td onDoubleClick={(e) => handleCellDoubleClick(e, q.mr_no, 'MR No')} className="p-2 cursor-copy hover:bg-black/5" title="Double-click to copy">{q.mr_no || '-'}</td>
+                                    <td onDoubleClick={(e) => handleCellDoubleClick(e, q.pr_no, 'PR No')} className="p-2 cursor-copy hover:bg-black/5" title="Double-click to copy">{q.pr_no || '-'}</td>
                                     <td className="p-2">{q.brand || q.brand_name || q.Store?.brand || '-'}</td>
                                     <td className="p-2">{q.location || q.Store?.mall || '-'}</td>
                                     <td className="p-2">{q.city || q.Store?.city || '-'}</td>
@@ -600,7 +624,7 @@ const QuotationList = () => {
                                     <td className="p-2 truncate max-w-[100px]" title={q.craftsperson_notes}>
                                         {q.craftsperson_notes || '-'}
                                     </td>
-                                    <td className="p-2 font-bold text-green-600">{po.po_no || '-'}</td>
+                                    <td onDoubleClick={(e) => handleCellDoubleClick(e, po.po_no, 'PO No')} className="p-2 font-bold text-green-600 cursor-copy hover:bg-black/5" title="Double-click to copy">{po.po_no || '-'}</td>
                                     <td className="p-2">{po.po_date || '-'}</td>
                                     <td className="p-2">{po.eta || '-'}</td>
                                     <td className="p-2">{po.update_notes || '-'}</td>
@@ -609,11 +633,11 @@ const QuotationList = () => {
                                     <td className="p-2 text-right">{po.vat_15 || q.vat_amount || '0.00'}</td>
                                     <td className="p-2 text-right font-bold">{po.total_inc_vat || q.grand_total || '0.00'}</td>
                                     <td className="p-2 font-bold text-green-600">{fin.invoice_status || '-'}</td>
-                                    <td className="p-2 font-bold text-green-600">{fin.invoice_no || '-'}</td>
+                                    <td onDoubleClick={(e) => handleCellDoubleClick(e, fin.invoice_no, 'Invoice No')} className="p-2 font-bold text-green-600 cursor-copy hover:bg-black/5" title="Double-click to copy">{fin.invoice_no || '-'}</td>
                                     <td className="p-2">{fin.invoice_date || '-'}</td>
                                     <td className="p-2">{q.supervisor || '-'}</td>
                                     <td className="p-2 truncate max-w-[150px]" title={q.comments}>{q.comments || '-'}</td>
-                                    <td className="p-2">{q.oracle_ccid || '-'}</td>
+                                    <td onDoubleClick={(e) => handleCellDoubleClick(e, q.oracle_ccid, 'Store CCID')} className="p-2 cursor-copy hover:bg-black/5" title="Double-click to copy">{q.oracle_ccid || '-'}</td>
                                     <td className="p-2 text-right">{fin.advance_payment || '0.00'}</td>
                                     <td className="p-2">{fin.payment_ref || '-'}</td>
                                     <td className="p-2 text-right font-bold text-green-700">{fin.received_amount || '0.00'}</td>

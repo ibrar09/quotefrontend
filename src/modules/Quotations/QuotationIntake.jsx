@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, ArrowRightCircle, Loader2, Save, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { FileText, ArrowRightCircle, Loader2, Save, AlertCircle, CheckCircle2, X } from 'lucide-react';
 import axios from 'axios';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
@@ -32,33 +32,35 @@ const QuotationIntake = () => {
     }, [location.state]);
 
     const handleNext = () => {
-        if (!data.mrNo || !data.storeCcid) {
-            alert("Please enter MR Number and Store CCID");
-            return;
-        }
-        // Navigate to the main quotation page and pass the data as state
-        // Ensure keys match what NewQuotation expects
+        // Validation Relaxed: Allow empty, but warn if MR exists? 
+        // Actually, user wants "if we not enter... it should go". 
+        // So no blocking.
+
         navigate('/quotations/new-quotation', {
             state: {
                 mrNo: data.mrNo,
                 storeCcid: data.storeCcid,
                 mrDesc: data.mrDesc,
-                workDescription: data.mrDesc // Support both for safety
+                workDescription: data.mrDesc
             }
         });
     };
 
     const handleSaveIntake = async () => {
+        // Relaxed Validation: Only warn if absolutely nothing provided?
+        // Or just allow partial saves. Let's allow partials as requested.
+        /*
         if (!data.mrNo || !data.storeCcid) {
-            alert("Please enter MR Number and Store CCID");
-            return;
+             alert("Please enter MR Number and Store CCID");
+             return;
         }
+        */
         setLoading(true);
         try {
             await axios.post(`${API_BASE_URL}/api/quotations`, {
-                mr_no: data.mrNo,
-                oracle_ccid: data.storeCcid,
-                work_description: data.mrDesc,
+                mr_no: data.mrNo || '', // Ensure no undefined
+                oracle_ccid: data.storeCcid || '',
+                work_description: data.mrDesc || '',
                 quote_no: `INTAKE-${Date.now().toString().slice(-6)}`, // Temp ID
                 quote_status: 'INTAKE'
             });
@@ -161,11 +163,19 @@ const QuotationIntake = () => {
 
                     <div className="flex gap-3">
                         <button
+                            onClick={() => navigate(-1)} // Cancel / Go Back
+                            className={`p-3 rounded-xl flex items-center justify-center font-bold text-[13px] border-2 transition-transform hover:scale-[1.02] ${darkMode ? 'bg-transparent border-red-500 text-red-500 hover:bg-red-500 hover:text-white' : 'bg-white border-red-500 text-red-500 hover:bg-red-500 hover:text-white'}`}
+                            title="Cancel"
+                        >
+                            <X size={18} />
+                        </button>
+
+                        <button
                             onClick={handleSaveIntake}
                             disabled={loading}
                             className={`flex-1 p-3 rounded-xl flex items-center justify-center gap-2 font-bold text-[13px] border-2 transition-transform hover:scale-[1.02] ${darkMode ? 'bg-transparent border-[#00a8aa] text-[#00a8aa] hover:bg-[#00a8aa] hover:text-white' : 'bg-white border-black text-black hover:bg-black hover:text-white'}`}
                         >
-                            {loading ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />} {/* Assuming 'Save' is imported */}
+                            {loading ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
                             Save to Tracker
                         </button>
 
