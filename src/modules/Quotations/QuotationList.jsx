@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, Edit, Download, Search, RefreshCw, MapPin, Trash2, Upload } from 'lucide-react';
+import { Plus, Edit, Download, Search, RefreshCw, MapPin, Trash2, Upload, CheckCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useTheme } from '../../context/ThemeContext';
 import API_BASE_URL from '../../config/api';
@@ -10,6 +10,7 @@ import autoTable from 'jspdf-autotable';
 import logoSrc from '../../assets/Maaj-Logo 04.png';
 import QuotationEditModal from './QuotationEditModal';
 import BrandManagerModal from './BrandManagerModal';
+import JobCompletionModal from './JobCompletionModal';
 
 const QuotationList = () => {
     const [quotations, setQuotations] = useState([]);
@@ -24,6 +25,7 @@ const QuotationList = () => {
     const [highlightedRow, setHighlightedRow] = useState(null);
     const [groupBrands, setGroupBrands] = useState([]); // [NEW] Stores brands for current group filter
     const [showBrandManager, setShowBrandManager] = useState(false); // [NEW] Toggle for Brand Manager
+    const [selectedJobCompletion, setSelectedJobCompletion] = useState(null); // [NEW] Toggle for Job Completion Modal
     const navigate = useNavigate();
     const { darkMode, colors, themeStyles } = useTheme();
     const rowRefs = useRef({});
@@ -639,6 +641,13 @@ const QuotationList = () => {
                                     <td className="p-2 text-center">
                                         <div className="flex items-center justify-center gap-2">
                                             <button
+                                                onClick={() => setSelectedJobCompletion(q)}
+                                                className="hover:scale-110 transition-transform p-1 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-md text-green-600"
+                                                title="Job Completion & Attachments"
+                                            >
+                                                <CheckCircle size={14} />
+                                            </button>
+                                            <button
                                                 onClick={() => navigate('/quotations/new-quotation', { state: { loadFromQuotation: q } })}
                                                 className="hover:scale-110 transition-transform p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md text-amber-500"
                                                 title="Revise Quotation (Full Editor)"
@@ -741,6 +750,15 @@ const QuotationList = () => {
                 groupName={brandFilter}
                 onUpdate={fetchGroupBrands}
             />
+
+            {/* [NEW] Job Completion Modal */}
+            {selectedJobCompletion && (
+                <JobCompletionModal
+                    quotation={selectedJobCompletion}
+                    onClose={() => setSelectedJobCompletion(null)}
+                    onUpdate={fetchQuotations}
+                />
+            )}
         </div >
     );
 };

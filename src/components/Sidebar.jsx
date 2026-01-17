@@ -179,6 +179,12 @@ const Sidebar = ({ darkMode = true, isMobileOpen = false, onClose }) => {
         { id: "pl-sync", label: "Sync / Upload", route: "/admin/data-sync", color: "indigo" },
       ]
     },
+    {
+      id: "recycle-bin",
+      label: "Recycle Bin",
+      icon: "🗑️",
+      route: "/recycle-bin"
+    }
   ];
 
   const toggleSidebar = () => setIsOpen(!isOpen);

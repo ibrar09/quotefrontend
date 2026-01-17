@@ -141,8 +141,8 @@ const MasterData = () => {
                                     <td className="p-4 text-xs whitespace-nowrap">{store.fm_supervisor}</td>
                                     <td className="p-4">
                                         <span className={`text-[9px] font-black px-2 py-1 rounded-full uppercase tracking-widest border ${store.store_status === 'ACTIVE' || store.store_status === 'LFL'
-                                                ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
-                                                : darkMode ? 'bg-gray-800 text-gray-500 border-gray-700' : 'bg-gray-50 text-gray-400 border-gray-100'
+                                            ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                            : darkMode ? 'bg-gray-800 text-gray-500 border-gray-700' : 'bg-gray-50 text-gray-400 border-gray-100'
                                             }`}>
                                             {store.store_status || 'N/A'}
                                         </span>

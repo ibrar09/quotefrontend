@@ -1791,7 +1791,7 @@ input[type = "number"] {
   aspect-ratio: 4/3!important;
 }
 `}</style>
-    </div>
+    </div >
   );
 };
 

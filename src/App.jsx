@@ -15,6 +15,7 @@ import MasterData from "./modules/Admin/MasterData";
 import PriceList from "./modules/Admin/PriceList";
 import CustomPriceList from "./modules/Admin/CustomPriceList";
 import CustomStores from "./modules/Admin/CustomStores";
+import RecycleBin from "./pages/RecycleBin";
 
 function App() {
   return (
@@ -43,6 +44,7 @@ function App() {
           <Route path="admin/custom-pricelist" element={<CustomPriceList />} />
           <Route path="master-data" element={<MasterData />} />
           <Route path="rate-card" element={<PriceList />} />
+          <Route path="recycle-bin" element={<RecycleBin />} />
         </Route>
       </Routes>
     </Router>
