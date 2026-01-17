@@ -80,6 +80,7 @@ const Job = sequelize.define('Job', {
 }, {
   tableName: 'jobs',
   timestamps: true,
+  paranoid: true, // Enable Soft Delete
   indexes: [
     {
       unique: true,

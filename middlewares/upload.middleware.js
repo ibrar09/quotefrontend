@@ -44,32 +44,30 @@ const diskStorage = multer.diskStorage({
 const cloudinaryStorage = process.env.STORAGE_TYPE === 'CLOUDINARY'
     ? new CloudinaryStorage({
         cloudinary: cloudinary,
-        params: {
-            folder: 'quotations',
-            allowedFormats: ['jpg', 'jpeg', 'png', 'webp'],
-            public_id: (req, file) => {
-                const name = file.originalname.split('.')[0].replace(/[^a-zA-Z0-9]/g, '_');
-                return `${name}-${Date.now()}`;
-            }
+        params: async (req, file) => {
+            // Determine resource type based on file
+            let resourceType = 'image';
+            if (file.mimetype.includes('video')) resourceType = 'video';
+            if (file.mimetype.includes('pdf') || file.mimetype.includes('application')) resourceType = 'raw';
+
+            return {
+                folder: 'quotations',
+                resource_type: 'auto',
+                public_id: file.originalname.split('.')[0].replace(/[^a-zA-Z0-9]/g, '_') + '-' + Date.now(),
+            };
         }
     })
     : null;
 
 if (process.env.STORAGE_TYPE === 'CLOUDINARY') {
-    console.log('✅ [UPLOAD] Cloudinary Storage configured with allowedFormats.');
+    console.log('✅ [UPLOAD] Cloudinary Storage configured (Images, Videos, PDFs).');
 }
 
 const fileFilter = (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|webp/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
-
-    if (mimetype && extname) {
-        return cb(null, true);
-    } else {
-        console.warn(`⚠️ [UPLOAD] Blocked invalid file type: ${file.originalname}`);
-        cb(new Error('Only images (jpg, jpeg, png, webp) are allowed'));
-    }
+    const allowedTypes = /jpeg|jpg|png|webp|pdf|mp4|mov|avi|webm|application/;
+    // Relaxed filter to allow PDFs and Videos
+    // For stricter control, we can check specific mimetypes
+    cb(null, true);
 };
 
 // Select storage engine based on config

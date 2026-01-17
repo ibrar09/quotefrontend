@@ -12,11 +12,16 @@ import masterRoutes from './master.routes.js';
 import dashboardRoutes from './dashboard.routes.js';
 import notificationRoutes from './notification.routes.js';
 import clientGroupRoutes from './clientGroup.routes.js'; // [NEW]
+import jobRoutes from './job.routes.js'; // [NEW]
+import binRoutes from './bin.routes.js'; // [NEW] Recycling Bin
+
 const router = express.Router();
 
 // 🔹 Mount all routes
 router.use('/notifications', notificationRoutes);
-router.use('/client-groups', clientGroupRoutes); // [NEW]
+router.use('/client-groups', clientGroupRoutes);
+router.use('/jobs', jobRoutes);
+router.use('/bin', binRoutes); // [NEW]
 router.use('/dashboard', dashboardRoutes);
 router.use('/quotations', quotationRoutes);
 router.use('/jobitems', jobItemRoutes);

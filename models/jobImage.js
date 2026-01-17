@@ -10,10 +10,26 @@ const JobImage = sequelize.define('JobImage', {
     image_data: { type: DataTypes.TEXT }, // Storing Base64 for now
     file_path: { type: DataTypes.TEXT },
     file_name: { type: DataTypes.STRING },
-    original_name: { type: DataTypes.STRING }
+    original_name: { type: DataTypes.STRING },
+    type: {
+        type: DataTypes.ENUM('BEFORE', 'AFTER'),
+        defaultValue: 'BEFORE',
+        allowNull: true
+    },
+    file_type: {
+        type: DataTypes.ENUM('IMAGE', 'VIDEO', 'DOCUMENT'),
+        defaultValue: 'IMAGE'
+    },
+    image_url: {
+        type: DataTypes.VIRTUAL,
+        get() {
+            return this.getDataValue('file_path');
+        }
+    }
 }, {
     tableName: 'job_images',
-    timestamps: true
+    timestamps: true,
+    paranoid: true // Enable Soft Delete
 });
 
 export default JobImage;
