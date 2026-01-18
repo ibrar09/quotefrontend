@@ -1,7 +1,7 @@
-// src/components/Sidebar.jsx
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
+import { FaChevronLeft, FaChevronRight, FaTimes, FaSignOutAlt } from "react-icons/fa";
+import { useAuth } from "../context/AuthContext"; // [NEW]
 
 const Sidebar = ({ darkMode = true, isMobileOpen = false, onClose }) => {
   const navigate = useNavigate();
@@ -10,17 +10,25 @@ const Sidebar = ({ darkMode = true, isMobileOpen = false, onClose }) => {
   const [isOpen, setIsOpen] = useState(true);
   const [openSubMenu, setOpenSubMenu] = useState(null);
 
+  // ... menuItems definition ... 
+
+  // ... menuItems definition ... 
+
+  const { hasPermission, user, logout } = useAuth(); // [NEW]
+
   const menuItems = [
     {
       id: "dashboard",
       label: "Dashboard",
       icon: "📊",
       route: "/",
+      requiredPermission: "view_dashboard" // [NEW]
     },
     {
       id: "brand-alshaya",
       label: "Alshaya",
       icon: "🏢",
+      requiredPermission: "view_quotations", // [NEW]
       subItems: [
         {
           id: "alshaya-tracker",
@@ -47,6 +55,7 @@ const Sidebar = ({ darkMode = true, isMobileOpen = false, onClose }) => {
       id: "brand-structure",
       label: "Structure",
       icon: "🏗️",
+      requiredPermission: "view_quotations", // [NEW]
       subItems: [
         {
           id: "structure-tracker",
@@ -124,6 +133,7 @@ const Sidebar = ({ darkMode = true, isMobileOpen = false, onClose }) => {
       id: "work-orders",
       label: "Work Orders",
       icon: "🔨",
+      requiredPermission: "view_quotations", // [NEW] (Using same perm for now)
       subItems: [
         {
           id: "work-tracker",
@@ -135,9 +145,36 @@ const Sidebar = ({ darkMode = true, isMobileOpen = false, onClose }) => {
       ],
     },
     {
+      id: "worker-reports",
+      label: "Worker Reports",
+      icon: "📋",
+      requiredPermission: "view_quotations", // [NEW]
+      subItems: [
+        {
+          id: "wr-send",
+          label: "🚀 Need to Send",
+          route: "/quotations/list?mode=selection&status=READY_TO_SEND",
+          color: "indigo",
+        },
+        {
+          id: "wr-pending",
+          label: "⏳ Pending Works",
+          route: "/quotations/list?mode=selection&status=APPROVED",
+          color: "orange",
+        },
+        {
+          id: "wr-completion",
+          label: "✅ Need Completion",
+          route: "/quotations/list?mode=selection&status=PO_RECEIVED",
+          color: "green",
+        },
+      ]
+    },
+    {
       id: "finance",
       label: "Job Completion",
       icon: "💰",
+      requiredPermission: "view_finance", // [NEW]
       subItems: [
         {
           id: "fin-po-recv",
@@ -163,6 +200,7 @@ const Sidebar = ({ darkMode = true, isMobileOpen = false, onClose }) => {
       id: "master-data",
       label: "Master Data (AOR)",
       icon: "🗄️",
+      requiredPermission: "manage_master_data", // [NEW]
       subItems: [
         { id: "md-view", label: "Dashboard View", route: "/master-data", color: "blue" },
         { id: "md-custom", label: "Custom Stores", route: "/admin/custom-stores", color: "orange" },
@@ -173,6 +211,7 @@ const Sidebar = ({ darkMode = true, isMobileOpen = false, onClose }) => {
       id: "rate-card",
       label: "Price List / Rate Card",
       icon: "💲",
+      requiredPermission: "manage_master_data", // [NEW]
       subItems: [
         { id: "pl-view", label: "Rate Card View", route: "/rate-card", color: "green" },
         { id: "pl-custom", label: "Custom PL / Items", route: "/admin/custom-pricelist", color: "purple" },
@@ -183,9 +222,25 @@ const Sidebar = ({ darkMode = true, isMobileOpen = false, onClose }) => {
       id: "recycle-bin",
       label: "Recycle Bin",
       icon: "🗑️",
-      route: "/recycle-bin"
+      route: "/recycle-bin",
+      requiredPermission: "delete_quotation" // [NEW]
+    },
+    {
+      id: "users",
+      label: "User Management",
+      icon: "🛡️",
+      route: "/admin/users",
+      requiredPermission: "manage_users"
     }
   ];
+
+  // Filter items based on permission
+  const visibleMenuItems = menuItems.filter(item => {
+    if (item.requiredPermission) {
+      return hasPermission(item.requiredPermission);
+    }
+    return true; // Show by default if no permission required
+  });
 
   const toggleSidebar = () => setIsOpen(!isOpen);
 
@@ -281,7 +336,7 @@ const Sidebar = ({ darkMode = true, isMobileOpen = false, onClose }) => {
       {/* Menu */}
       <nav className="flex-1 overflow-y-auto py-3">
         <ul className="space-y-1">
-          {menuItems.map((item) => (
+          {visibleMenuItems.map((item) => (
             <li key={item.id}>
               {/* Main item */}
               <div
@@ -336,17 +391,25 @@ const Sidebar = ({ darkMode = true, isMobileOpen = false, onClose }) => {
         </ul>
       </nav>
 
-      {/* Footer */}
       <div className="p-4 border-t border-white/20">
         <div className="flex items-center space-x-3">
           <div className="h-9 w-9 rounded-full bg-blue-500 flex items-center justify-center text-sm font-bold">
             AD
           </div>
           {isOpen && (
-            <div>
-              <p className="text-sm font-semibold">Admin User</p>
-              <p className="text-xs text-gray-300">FM Manager</p>
+            <div className="flex-1">
+              <p className="text-sm font-semibold truncate">{user?.username || 'User'}</p>
+              <p className="text-xs text-gray-300 truncate">{user?.role || 'Role'}</p>
             </div>
+          )}
+          {isOpen && (
+            <button
+              onClick={logout}
+              className="p-2 hover:bg-red-500/20 text-red-200 rounded-md transition-colors"
+              title="Logout"
+            >
+              <FaSignOutAlt />
+            </button>
           )}
         </div>
       </div>

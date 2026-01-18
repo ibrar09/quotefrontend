@@ -2,10 +2,12 @@ import React, { useState } from "react";
 import { FaUserCircle, FaSearch, FaSun, FaMoon, FaBars, FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../context/ThemeContext";
+import { useAuth } from "../context/AuthContext"; // [NEW]
 import NotificationBell from "./NotificationBell";
 
 const TopBar = ({ pageTitle, onMenuClick }) => {
   const { darkMode, toggleTheme, themeStyles } = useTheme(); // get global theme
+  const { user, logout } = useAuth(); // [NEW]
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
@@ -105,15 +107,16 @@ const TopBar = ({ pageTitle, onMenuClick }) => {
             <div className={`absolute right-0 mt-2 w-44 rounded-xl py-2 z-50 shadow-lg border transition-colors duration-300
               ${darkMode ? "bg-gray-800 border-gray-700 text-white" : "bg-white border-gray-200 text-gray-800"}`}
             >
-              <a href="#profile" className="block px-4 py-2 text-sm rounded-md hover:bg-blue-100 dark:hover:bg-gray-700 transition-colors duration-300">
+              <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700">
+                <p className="text-sm font-bold truncate">{user?.username || 'User'}</p>
+                <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+              </div>
+              <button onClick={() => navigate('/profile')} className={`w-full text-left px-4 py-2 text-sm transition-colors duration-300 ${darkMode ? "hover:bg-gray-700" : "hover:bg-gray-100"}`}>
                 Profile
-              </a>
-              <a href="#settings" className="block px-4 py-2 text-sm rounded-md hover:bg-blue-100 dark:hover:bg-gray-700 transition-colors duration-300">
-                Settings
-              </a>
-              <a href="#logout" className="block px-4 py-2 text-sm text-red-500 rounded-md hover:bg-red-50 dark:hover:bg-red-700 transition-colors duration-300">
+              </button>
+              <button onClick={logout} className={`w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors duration-300`}>
                 Logout
-              </a>
+              </button>
             </div>
           )}
         </div>
