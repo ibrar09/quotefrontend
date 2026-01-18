@@ -30,7 +30,7 @@ export const getDashboardStats = async (req, res) => {
         // Total Potential Revenue (from Approved or Completed jobs)
         const totalRevenue = await Job.sum('grand_total', {
             where: {
-                quote_status: { [Op.in]: ['APPROVED', 'COMPLETED'] },
+                quote_status: { [Op.in]: ['APPROVED', 'PAID'] },
                 is_latest: true
             }
         }) || 0;

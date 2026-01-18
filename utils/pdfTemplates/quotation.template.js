@@ -57,6 +57,91 @@ export const generateQuotationHTML = (data) => {
                 color: black;
                 font-size: 10px;
                 line-height: 1.1;
+                /* Flex Body for Sticky Footer logic */
+                display: flex;
+                flex-direction: column;
+                min-height: 100vh;
+            }
+
+            /* Table wrapper grows and simulates borders with gradient */
+            .table-wrapper {
+                flex: 1; 
+                display: flex;
+                flex-direction: column;
+                width: 100%;
+                border-left: 1px solid black;
+                border-right: 1px solid black;
+                border-bottom: 1px solid black; /* Close the box at bottom */
+                
+                /* Vertical Lines Simulation to fill empty space */
+                /* Stops match column widths: 8, 56, 5, 5, 8, 8, 10 */
+                /* Cumulative: 8, 64, 69, 74, 82, 90 */
+                background: linear-gradient(to right, 
+                    transparent 0%, transparent 8%, black 8%, black calc(8% + 1px), transparent calc(8% + 1px),
+                    transparent 64%, black 64%, black calc(64% + 1px), transparent calc(64% + 1px),
+                    transparent 69%, black 69%, black calc(69% + 1px), transparent calc(69% + 1px),
+                    transparent 74%, black 74%, black calc(74% + 1px), transparent calc(74% + 1px),
+                    transparent 82%, black 82%, black calc(82% + 1px), transparent calc(82% + 1px),
+                    transparent 90%, black 90%, black calc(90% + 1px), transparent calc(90% + 1px),
+                    transparent 100%
+                );
+            }
+
+            /* Ensure rows have background to cover the gradient lines where data exists */
+            tr { background: white; }
+            th { background: #f3f4f6; }
+
+            /* Bottom section (Images/Totals) gets margin-top: auto */
+            .no-split-section {
+                display: flex;
+                margin-top: auto; 
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                padding-top: 16px;
+            }
+
+            /* --- DYNAMIC LAYOUT --- */
+            .content-wrapper {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+            }
+
+            /* Table wrapper grows and simulates borders with gradient */
+            .table-wrapper {
+                flex: 1; 
+                display: flex;
+                flex-direction: column;
+                width: 100%;
+                border-left: 1px solid black;
+                border-right: 1px solid black;
+                border-bottom: 1px solid black; /* Close the box at bottom */
+                
+                /* Vertical Lines Simulation to fill empty space */
+                /* Stops match column widths: 8, 56, 5, 5, 8, 8, 10 */
+                /* Cumulative: 8, 64, 69, 74, 82, 90 */
+                background: linear-gradient(to right, 
+                    transparent 0%, transparent 8%, black 8%, black calc(8% + 1px), transparent calc(8% + 1px),
+                    transparent 64%, black 64%, black calc(64% + 1px), transparent calc(64% + 1px),
+                    transparent 69%, black 69%, black calc(69% + 1px), transparent calc(69% + 1px),
+                    transparent 74%, black 74%, black calc(74% + 1px), transparent calc(74% + 1px),
+                    transparent 82%, black 82%, black calc(82% + 1px), transparent calc(82% + 1px),
+                    transparent 90%, black 90%, black calc(90% + 1px), transparent calc(90% + 1px),
+                    transparent 100%
+                );
+            }
+
+            /* Ensure rows have background to cover the gradient lines where data exists */
+            tr { background: white; }
+            th { background: #f3f4f6; }
+
+            /* Bottom section (Images/Totals) gets margin-top: auto */
+            .no-split-section {
+                display: flex;
+                margin-top: auto; 
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                padding-top: 16px;
             }
 
             /* --- UTILITIES --- */
@@ -221,6 +306,7 @@ export const generateQuotationHTML = (data) => {
         </div>
 
         <!-- ITEMS TABLE -->
+        <div class="table-wrapper">
         <table>
             <thead>
                 <tr class="bg-gray-100 font-bold uppercase text-[9px]">
@@ -247,6 +333,24 @@ export const generateQuotationHTML = (data) => {
                     </td>
                 </tr>
                 `).join('')}
+
+                <!-- FILLER ROWS (To fill space but not push to next page) -->
+                ${(() => {
+            const MIN_ROWS = 6; // Reduced from 12 to prevent forcing page break
+            const fillerCount = Math.max(0, MIN_ROWS - items.length);
+            if (fillerCount === 0) return '';
+            return Array(fillerCount).fill(0).map(() => `
+                        <tr>
+                            <td class="col-code" style="height: 24px;">&nbsp;</td>
+                            <td class="col-desc">&nbsp;</td>
+                            <td class="col-unit">&nbsp;</td>
+                            <td class="col-qty">&nbsp;</td>
+                            <td class="col-price">&nbsp;</td>
+                            <td class="col-price">&nbsp;</td>
+                            <td class="col-total">&nbsp;</td>
+                        </tr>
+                    `).join('');
+        })()}
                 
                 <!-- TOTALS ROW FOR ITEMS -->
                  <tr class="font-bold bg-gray-100 uppercase text-sm">
@@ -257,22 +361,23 @@ export const generateQuotationHTML = (data) => {
                 </tr>
             </tbody>
         </table>
+        </div>
 
          <!-- WRAPPER FOR IMAGES AND TOTALS -->
          <div style="display: flex; margin-top: 4px; border: none; page-break-inside: avoid;">
             
             <!-- LEFT: IMAGES (50%) -->
             <div style="width: 50%; padding-right: 4px;">
-               <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; border: 1px solid #d1d5db; background: #f9fafb; padding: 2px; min-height: 200px;">
-                  ${(data.images || []).map(img => {
-        const src = img ? (img.file_path || img) : '';
-        if (!src) return '';
-        return `
-                      <div style="height: 128px; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid #d1d5db; background: white;">
-                         <img src="${src}" style="width: 100%; height: 100%; object-fit: cover;" />
+               <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; border: 1px solid #d1d5db; background: #f9fafb; padding: 2px; min-height: 160px;">
+                  ${(data.images || []).slice(0, 6).map(img => {
+            const src = img ? (img.file_path || img) : '';
+            if (!src) return '';
+            return `
+                      <div style="height: 100px; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid #d1d5db; background: white;">
+                         <img src="${src}" style="width: 100%; height: 100%; object-fit: cover; max-width: 100%; display: block;" />
                       </div>
                   `;
-    }).join('')}
+        }).join('')}
                </div>
             </div>
 
@@ -302,10 +407,10 @@ export const generateQuotationHTML = (data) => {
                 </table>
 
                  <!-- STAMP & SIGNATURE BOX -->
-                <div style="border: 1px solid black; height: 160px; display: flex; align-items: center; justify-content: center; margin-bottom: 4px; background: white; margin-top: 4px; position: relative;">
+                <div style="border: 1px solid black; height: 120px; display: flex; align-items: center; justify-content: center; margin-bottom: 4px; background: white; margin-top: 4px; position: relative;">
                      <!-- Stamp and Signature from Data -->
-                     ${data.stampBase64 ? `<img src="${data.stampBase64}" style="height: 140px; width: auto; object-fit: contain; position: absolute; left: 20px;" />` : ''}
-                     ${data.signatureBase64 ? `<img src="${data.signatureBase64}" style="height: 60px; width: auto; object-fit: contain; position: absolute; right: 40px; bottom: 40px;" />` : ''}
+                     ${data.stampBase64 ? `<img src="${data.stampBase64}" style="height: 100px; width: auto; object-fit: contain; position: absolute; left: 20px;" />` : ''}
+                     ${data.signatureBase64 ? `<img src="${data.signatureBase64}" style="height: 50px; width: auto; object-fit: contain; position: absolute; right: 40px; bottom: 40px;" />` : ''}
                 </div>
 
                 <!-- DATE OF COMPLETION -->

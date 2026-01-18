@@ -13,4 +13,7 @@ router.post('/register', verifyToken, authorize('manage_users'), authController.
 router.put('/users/:id', verifyToken, authorize('manage_users'), authController.updateUser);
 router.delete('/users/:id', verifyToken, authorize('manage_users'), authController.deleteUser);
 
+// Self-Service Profile Route (Protected but for any logged-in user)
+router.put('/profile', verifyToken, authController.updateProfile);
+
 export default router;

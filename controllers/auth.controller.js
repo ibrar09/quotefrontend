@@ -139,6 +139,43 @@ export const updateUser = async (req, res) => {
     }
 };
 
+export const updateProfile = async (req, res) => {
+    try {
+        // ID comes from the Token (Middleware attaches it to req.user)
+        const id = req.user.id;
+        const { username, email, password } = req.body;
+
+        const user = await User.findByPk(id);
+        if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+        // Only allow updating safe fields
+        user.username = username || user.username;
+        user.email = email || user.email;
+
+        // Password change logic
+        if (password && password.trim() !== '') {
+            user.password = password; // Hook will hash it
+        }
+
+        await user.save();
+
+        // Return updated user info (excluding password)
+        res.json({
+            success: true,
+            message: 'Profile updated successfully',
+            user: {
+                id: user.id,
+                username: user.username,
+                email: user.email,
+                role: user.role,
+                permissions: user.permissions
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
 export const deleteUser = async (req, res) => {
     try {
         const { id } = req.params;

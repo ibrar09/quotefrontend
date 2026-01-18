@@ -74,6 +74,8 @@ export const generatePdf = async (req, res) => {
                 // Process Images: Convert local /uploads paths OR remote URLs to Base64 for Puppeteer
                 const processedImages = await Promise.all((jobJSON.JobImages || []).map(async (img) => {
                     let imagePath = img.file_path || '';
+                    console.log(`[PDF] Processing Image: ${imagePath}`);
+
                     try {
                         // 1. Remote URL (Cloudinary / S3)
                         if (imagePath.startsWith('http')) {
@@ -84,16 +86,34 @@ export const generatePdf = async (req, res) => {
                                 const buffer = Buffer.from(arrayBuffer);
                                 const mime = response.headers.get('content-type') || 'image/jpeg';
                                 return `data:${mime};base64,${buffer.toString('base64')}`;
+                            } else {
+                                console.warn(`[PDF] Failed to fetch remote image: ${response.statusText}`);
                             }
                         }
                         // 2. Local File System
-                        else if (imagePath.startsWith('/uploads')) {
-                            const localPath = `.${imagePath}`; // e.g., ./uploads/filename.jpg
-                            if (fs.existsSync(localPath)) {
-                                const fileData = fs.readFileSync(localPath);
-                                const ext = imagePath.split('.').pop().toLowerCase();
+                        // Handle various path formats: /uploads, uploads\, \uploads
+                        else if (imagePath.includes('uploads')) {
+                            // Normalize path to fix windows backslashes
+                            const normalizedPath = imagePath.replace(/\\/g, '/');
+
+                            // Construct absolute path using process.cwd()
+                            // Assumption: 'uploads' folder is in root of backend
+                            let finalPath = path.join(process.cwd(), normalizedPath.startsWith('/') ? normalizedPath.slice(1) : normalizedPath);
+
+                            // If path doesn't start with 'uploads', assume it's just filename and append
+                            if (!normalizedPath.includes('/')) {
+                                finalPath = path.join(process.cwd(), 'uploads', normalizedPath);
+                            }
+
+                            console.log(`[PDF] Resolved Local Path: ${finalPath}`);
+
+                            if (fs.existsSync(finalPath)) {
+                                const fileData = fs.readFileSync(finalPath);
+                                const ext = path.extname(finalPath).toLowerCase().replace('.', '');
                                 const mime = ext === 'png' ? 'image/png' : 'image/jpeg';
                                 return `data:${mime};base64,${fileData.toString('base64')}`;
+                            } else {
+                                console.warn(`[PDF] Local file not found: ${finalPath}`);
                             }
                         }
                     } catch (err) {

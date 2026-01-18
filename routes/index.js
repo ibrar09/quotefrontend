@@ -16,11 +16,12 @@ import jobRoutes from './job.routes.js'; // [NEW]
 import binRoutes from './bin.routes.js'; // [NEW] Recycling Bin
 import authRoutes from './auth.routes.js'; // [NEW]
 import devRoutes from './dev.routes.js'; // [NEW] Dev Utils
-
+import analyticsRoutes from './analytics.routes.js'; // [NEW] Analytics
 
 const router = express.Router();
 
 // 🔹 Mount all routes
+router.use('/analytics', analyticsRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/client-groups', clientGroupRoutes);
 router.use('/auth', authRoutes); // [NEW]

@@ -21,6 +21,9 @@ Job.belongsTo(Store, { foreignKey: 'oracle_ccid', constraints: false });
 Job.hasMany(JobItem, { foreignKey: 'job_id' });
 JobItem.belongsTo(Job, { foreignKey: 'job_id' });
 
+JobItem.belongsTo(PriceList, { foreignKey: 'item_code', targetKey: 'code', constraints: false });
+PriceList.hasMany(JobItem, { foreignKey: 'item_code', sourceKey: 'code', constraints: false });
+
 Job.hasMany(JobImage, { foreignKey: 'job_id', onDelete: 'CASCADE' });
 JobImage.belongsTo(Job, { foreignKey: 'job_id' });
 
