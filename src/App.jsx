@@ -29,6 +29,8 @@ const CustomPriceList = lazy(() => import("./modules/Admin/CustomPriceList"));
 const CustomStores = lazy(() => import("./modules/Admin/CustomStores"));
 const UserManagement = lazy(() => import("./modules/Admin/UserManagement"));
 const RecycleBin = lazy(() => import("./pages/RecycleBin"));
+const AnalyticsDashboard = lazy(() => import("./pages/AnalyticsDashboard")); // [NEW]
+const ProfilePage = lazy(() => import("./pages/ProfilePage")); // [NEW]
 
 function App() {
   return (
@@ -38,6 +40,15 @@ function App() {
           <Routes>
             {/* Public Route */}
             <Route path="/login" element={<Login />} />
+
+            {/* Profile Route - Protected */}
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <DashboardLayout>
+                  <ProfilePage />
+                </DashboardLayout>
+              </ProtectedRoute>
+            } />
 
             {/* Standalone PDF View (No Sidebar) - Protected? Yes */}
             <Route element={<ProtectedRoute />}>
@@ -49,6 +60,9 @@ function App() {
               <Route element={<DashboardLayout />}>
                 {/* Default dashboard page */}
                 <Route index element={<Dashboard />} />
+
+                {/* Analytics Dashboard */}
+                <Route path="/analytics" element={<AnalyticsDashboard />} />
 
                 {/* Quotation Routes */}
                 <Route path="quotations/list" element={<QuotationList />} />

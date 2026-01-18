@@ -25,6 +25,13 @@ const Sidebar = ({ darkMode = true, isMobileOpen = false, onClose }) => {
       requiredPermission: "view_dashboard" // [NEW]
     },
     {
+      id: "analytics",
+      label: "Analytics",
+      icon: "📉",
+      route: "/analytics",
+      requiredPermission: "view_dashboard"
+    },
+    {
       id: "brand-alshaya",
       label: "Alshaya",
       icon: "🏢",
@@ -245,6 +252,13 @@ const Sidebar = ({ darkMode = true, isMobileOpen = false, onClose }) => {
   const toggleSidebar = () => setIsOpen(!isOpen);
 
   const handleMainClick = (item) => {
+    // If sidebar is minimized and item has sub-menu, expand sidebar first
+    if (!isOpen && item.subItems) {
+      setIsOpen(true);
+      setOpenSubMenu(item.id);
+      return;
+    }
+
     if (item.subItems) {
       setOpenSubMenu(openSubMenu === item.id ? null : item.id);
     } else if (item.route) {
@@ -341,6 +355,7 @@ const Sidebar = ({ darkMode = true, isMobileOpen = false, onClose }) => {
               {/* Main item */}
               <div
                 onClick={() => handleMainClick(item)}
+                title={!isOpen ? item.label : ""}
                 className={`flex items-center p-3 mx-2 rounded-xl cursor-pointer transition
                 ${isActiveRoute(item.route) || (item.subItems && item.subItems.some(sub => isActiveRoute(sub.route)))
                     ? "bg-blue-600 text-white shadow"

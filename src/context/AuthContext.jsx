@@ -57,12 +57,18 @@ export const AuthProvider = ({ children }) => {
         return user.permissions && user.permissions.includes(requiredPerm);
     };
 
+    const updateUserContext = (updatedUser) => {
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+    };
+
     const value = {
         user,
         loading,
         login,
         logout,
         hasPermission,
+        updateUserContext, // [NEW]
         isAuthenticated: !!user
     };
 
