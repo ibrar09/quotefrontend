@@ -72,7 +72,24 @@ const QuotationList = () => {
     }, [searchParams]);
 
     // [NEW] Fetch Brand Group members whenever brandFilter changes
-    // ... (keep fetchGroupBrands logic) ...
+    const fetchGroupBrands = () => {
+        if (brandFilter !== 'ALL') {
+            axios.get(`${API_BASE_URL}/api/client-groups/${brandFilter}/brands`)
+                .then(res => {
+                    if (res.data.success && res.data.data.length > 0) {
+                        const brands = res.data.data.map(b => b.brand_name.toUpperCase());
+                        // Also include the group name itself (e.g. 'ALSHAYA') just in case
+                        if (!brands.includes(brandFilter.toUpperCase())) brands.push(brandFilter.toUpperCase());
+                        setGroupBrands(brands);
+                    } else {
+                        setGroupBrands([]); // No group found, revert to simple string match
+                    }
+                })
+                .catch(() => setGroupBrands([]));
+        } else {
+            setGroupBrands([]);
+        }
+    };
 
     useEffect(() => {
         fetchGroupBrands();
