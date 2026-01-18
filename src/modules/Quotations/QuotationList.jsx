@@ -78,7 +78,57 @@ const QuotationList = () => {
         fetchGroupBrands();
     }, [brandFilter]);
 
-    // ... (keep drag scoll logic) ...
+    // Drag-to-Scroll State
+    const tableContainerRef = useRef(null);
+    const [isDragging, setIsDragging] = useState(false);
+    const [startX, setStartX] = useState(0);
+    const [scrollLeft, setScrollLeft] = useState(0);
+
+    // [NEW] Copy Helper
+    const copyToClipboard = async (text, label) => {
+        if (!text) return;
+        try {
+            await navigator.clipboard.writeText(text);
+            // Optional: Simple toast or Alert, but standard is subtle. 
+            // Let's use a quick alert or better, assume user knows.
+            // For now, let's show a small visual queue or nothing if user is fast.
+            // Actually user asked for ease.
+        } catch (err) {
+            console.error('Failed to copy', err);
+        }
+    };
+
+    const handleCellDoubleClick = (e, text, label) => {
+        if (!text) return;
+        e.stopPropagation(); // Prevent row selection if any
+        copyToClipboard(text, label);
+        // Show tooltip or temporary indicator?
+        // Let's rely on standard browser behavior or just a small visual feedback if possible.
+        // For simplicity:
+        alert(`Copied ${label}: ${text}`);
+    };
+
+    const handleMouseDown = (e) => {
+        setIsDragging(true);
+        setStartX(e.pageX - tableContainerRef.current.offsetLeft);
+        setScrollLeft(tableContainerRef.current.scrollLeft);
+    };
+
+    const handleMouseLeave = () => {
+        setIsDragging(false);
+    };
+
+    const handleMouseUp = () => {
+        setIsDragging(false);
+    };
+
+    const handleMouseMove = (e) => {
+        if (!isDragging) return;
+        e.preventDefault();
+        const x = e.pageX - tableContainerRef.current.offsetLeft;
+        const walk = (x - startX) * 2; // Scroll multiplier (speed)
+        tableContainerRef.current.scrollLeft = scrollLeft - walk;
+    };
 
     // Auto-scroll to highlighted row
     useEffect(() => {
@@ -130,7 +180,47 @@ const QuotationList = () => {
         }
     };
 
-    // ... (keep handleDelete and handleFileImport) ...
+    const handleDelete = async (id) => {
+        if (!window.confirm('Are you sure you want to delete this quotation? This action cannot be undone.')) return;
+
+        try {
+            const res = await axios.delete(`${API_BASE_URL}/api/quotations/${id}`);
+            if (res.data.success) {
+                alert('Quotation deleted successfully');
+                fetchQuotations(page); // Refresh list
+            } else {
+                throw new Error(res.data.message || 'Failed to delete');
+            }
+        } catch (err) {
+            console.error(err);
+            alert(`Error deleting quotation: ${err.message}`);
+        }
+    };
+
+    const handleFileImport = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setImporting(true);
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const res = await axios.post(`${API_BASE_URL}/api/master/upload-quotations`, formData);
+            if (res.data.count > 0) {
+                alert(`Successfully imported ${res.data.count} quotations!`);
+                fetchQuotations(page); // Reload the list
+            } else {
+                alert('No new quotations were imported. Please check your CSV format.');
+            }
+        } catch (err) {
+            console.error('Import Error:', err);
+            alert(`Import failed: ${err.response?.data?.error || err.message}`);
+        } finally {
+            setImporting(false);
+            e.target.value = null; // Reset input
+        }
+    };
 
     // [OPTIMIZATION] Memoize filtering to prevent re-calc on every render
     const filteredQuotations = React.useMemo(() => {
