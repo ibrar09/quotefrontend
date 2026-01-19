@@ -1685,22 +1685,10 @@ const NewQuotation = () => {
 
         <div className="flex gap-4 p-4 md:p-0 no-print">
           <button
-            onClick={() => handleSave('DRAFT')}
-            className="flex-1 bg-gray-500 text-white font-bold uppercase text-xs py-3 hover:bg-gray-600 transition-colors"
-          >
-            Save as Draft
-          </button>
-          <button
             onClick={handleDownloadPDF}
             className="flex-1 bg-blue-600 text-white font-bold uppercase text-xs py-3 hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
           >
             <Download size={16} /> Download PDF
-          </button>
-          <button
-            onClick={() => window.print()}
-            className="flex-1 bg-black text-white font-bold uppercase text-xs py-3 hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
-          >
-            <Printer size={16} /> Print/Save
           </button>
         </div>
 
@@ -1743,22 +1731,7 @@ const NewQuotation = () => {
 
       </div>
 
-      <div className="fixed bottom-6 right-6 flex flex-col gap-3 print:hidden z-50">
-        <button
-          onClick={() => window.print()}
-          className={`${darkMode ? 'bg-white text-black' : 'bg-black text-white'} p-4 rounded-full shadow-2xl hover: scale-110 transition-transform active: scale-95`}
-          title="Print Document"
-        >
-          <Printer size={24} />
-        </button>
-        {/* <button
-          onClick={downloadPDF}
-          className="bg-blue-600 text-white p-4 rounded-full shadow-2xl hover:scale-110 transition-transform active:scale-95"
-          title="Download PDF"
-        >
-          <Download size={24} />
-        </button> */}
-      </div>
+
 
       <style>{`
 @media print {
