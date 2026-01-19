@@ -331,11 +331,36 @@ const QuotationPrintView = () => {
                                                         images.length === 2 ? 'grid-cols-1' :
                                                             'grid-cols-3'
                                                         }`} style={{ minHeight: '200px' }}>
-                                                        {images.map((imgData, i) => (
-                                                            <div key={i} className="w-full h-32 flex items-center justify-center overflow-hidden border border-gray-300 relative">
-                                                                <img src={imgData && imgData.startsWith('/uploads') ? `${FINAL_API_URL}${imgData}` : imgData} alt={`Evidence ${i + 1}`} className="w-full h-full object-cover" />
-                                                            </div>
-                                                        ))}
+                                                        {images.map((imgData, i) => {
+                                                            if (!imgData) return null;
+
+                                                            // Normalize slashes
+                                                            let cleanPath = imgData.replace(/\\/g, '/');
+
+                                                            // Check if it's already a full URL
+                                                            const isUrl = cleanPath.startsWith('http');
+
+                                                            // Construct Src
+                                                            // If it's a local upload, prepend API URL. 
+                                                            // Ensure we don't double slash or miss a slash.
+                                                            let src = cleanPath;
+                                                            if (!isUrl) {
+                                                                // Ensure leading slash for path
+                                                                if (!cleanPath.startsWith('/')) cleanPath = '/' + cleanPath;
+                                                                src = `${FINAL_API_URL}${cleanPath}`;
+                                                            }
+
+                                                            return (
+                                                                <div key={i} className="w-full h-32 flex items-center justify-center overflow-hidden border border-gray-300 relative">
+                                                                    <img
+                                                                        src={src}
+                                                                        alt={`Evidence ${i + 1}`}
+                                                                        className="w-full h-full object-cover"
+                                                                        onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/400?text=Image+Not+Found'; }}
+                                                                    />
+                                                                </div>
+                                                            );
+                                                        })}
                                                     </div>
                                                 </td>
 
