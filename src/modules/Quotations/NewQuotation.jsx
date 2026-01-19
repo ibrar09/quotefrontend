@@ -731,75 +731,28 @@ const NewQuotation = () => {
   // --- PDF Download Function ---
   // --- PDF Download Function ---
   // --- PDF Download Function ---
+  // --- PDF Download Function ---
   const handleDownloadPDF = async () => {
-    let quoteId = location.state?.id || header.id;
-
-    // 1. If not saved yet, we use the PREVIEW API (no database save)
-    if (!quoteId) {
-      try {
-        setLoadingStore(true);
-        const payload = {
-          quote_no: header.quoteNo,
-          mr_no: header.mrNo,
-          mr_date: header.mrRecDate || null,
-          oracle_ccid: header.storeCcid,
-          work_description: header.mrDesc || header.description,
-          brand: header.brand,
-          city: header.city,
-          location: header.location,
-          region: header.region,
-          store_opening_date: header.openingDate || null,
-          attentionTo: header.attentionTo,
-          version: header.version,
-          validity: header.validity,
-          mr_priority: header.mrPriority,
-          currency: header.currency,
-          continuous_assessment: header.continuous_assessment,
-          completion_date: completionDate,
-          items: items.filter(i => i.code || i.description).map(item => ({
-            item_code: item.code,
-            description: item.description,
-            unit: item.unit,
-            quantity: Number(item.qty) || 0,
-            material_price: Number(item.material) || 0,
-            labor_price: Number(item.labor) || 0,
-            unit_price: (Number(item.material) || 0) + (Number(item.labor) || 0),
-          })),
-          images: images.filter(img => img !== null)
-        };
-
-        const previewRes = await axios.post(`${API_BASE_URL}/api/pdf/preview-prepare`, payload);
-        if (previewRes.data.success) {
-          quoteId = `preview-${previewRes.data.previewId}`;
-        } else {
-          setLoadingStore(false);
-          alert("Failed to prepare preview.");
-          return;
-        }
-      } catch (error) {
-        console.error("Preview preparation failed:", error);
-        alert("Failed to prepare PDF preview.");
-        setLoadingStore(false);
-        return;
-      } finally {
-        setLoadingStore(false);
-      }
-    }
-
-    // 2. Generate PDF using the ID (BACKEND GENERATION)
+    // 1. Auto-Save as Draft (User Request: "save pdf into drafts")
+    // We force a save to ensure we have a valid ID and latest data in DB
+    setLoadingStore(true);
     try {
+      const savedJob = await handleSave('DRAFT');
+
+      if (!savedJob || !savedJob.id) {
+        setLoadingStore(false);
+        return; // Validation failed or save error
+      }
+
+      const quoteId = savedJob.id;
       console.log("Requesting Backend PDF for ID:", quoteId);
 
+      // 2. Generate PDF using the ID (BACKEND GENERATION)
+      // We now always have a quoteId because we saved it above.
       const payload = {
-        title: "QUOTATION"
+        title: "QUOTATION",
+        quotationId: quoteId
       };
-
-      // Determine if it's a preview or real ID
-      if (typeof quoteId === 'string' && quoteId.startsWith('preview-')) {
-        payload.previewId = quoteId.replace('preview-', '');
-      } else {
-        payload.quotationId = quoteId;
-      }
 
       const res = await axios.post(`${API_BASE_URL}/api/pdf/generate`, payload, {
         responseType: 'blob'
@@ -809,7 +762,8 @@ const NewQuotation = () => {
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `Quotation - ${header.quoteNo || 'Draft'}.pdf`);
+      // Use the returned quote_no from save, or fallback
+      link.setAttribute('download', `Quotation - ${savedJob.quote_no || 'Draft'}.pdf`);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -817,6 +771,7 @@ const NewQuotation = () => {
     } catch (err) {
       console.error("PDF Download Error:", err);
       const errorMsg = err.response?.data?.message || err.message || 'Failed to download PDF.';
+
       // Helper: If backend sends JSON error in Blob, try to read it
       if (err.response?.data instanceof Blob) {
         const text = await err.response.data.text();
@@ -829,6 +784,8 @@ const NewQuotation = () => {
       } else {
         alert(`PDF Download Error: ${errorMsg}`);
       }
+    } finally {
+      setLoadingStore(false);
     }
   };
 
