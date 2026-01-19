@@ -25,6 +25,31 @@ console.log('---------------------------');
 
 const app = express();
 
+const allowedOrigins = [
+    process.env.FRONTEND_URL || 'http://localhost:5173',
+    'http://localhost:3000',
+    'https://quotefrontend-5t1t-git-main-ibrar-ahmads-projects-a25e834c.vercel.app' // Explicitly add production URL
+];
+
+// CORS Middleware must be first
+app.use(cors({
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.indexOf(origin) !== -1 || true) { // KEEPING NUCLEAR TRUE FOR NOW TO UNBLOCK
+            return callback(null, true);
+        } else {
+            return callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
+
+// Handle preflight requests for all routes
+app.options('*', cors());
+
 // Security Middleware
 app.use(helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" }, // Allow cross-origin for images/PDFs
@@ -41,18 +66,7 @@ app.use('/api', limiter); // Apply rate limiting to API routes
 
 // Middleware
 app.use(compression()); // [NEW] Enable GZIP/Brotli Compression
-const allowedOrigins = [
-    process.env.FRONTEND_URL || 'http://localhost:5173',
-    'http://localhost:3000' // Legacy/fallback
-];
 
-app.use(cors({
-    origin: function (origin, callback) {
-        // NUCLEAR OPTION: Allow all origins to fix the persistent blocker
-        return callback(null, true);
-    },
-    credentials: true
-}));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
