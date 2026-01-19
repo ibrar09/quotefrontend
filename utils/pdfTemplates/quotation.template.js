@@ -471,6 +471,24 @@ export const generateQuotationHTML = (data) => {
          </div>
           <div class="bg-theme text-center font-bold p-1 border-y-2 border-black mt-4 uppercase text-[9px] tracking-[0.2em]">APPROVALS</div>
 
+    <script>
+        // Wait for all images to load before signaling ready
+        window.addEventListener('load', async () => {
+            const images = Array.from(document.images);
+            await Promise.all(images.map(img => {
+                if (img.complete) return Promise.resolve();
+                return new Promise(resolve => {
+                    img.onload = resolve;
+                    img.onerror = resolve; // Continue even if one fails
+                });
+            }));
+            // Signal Puppeteer that we are ready
+            document.body.classList.add('pdf-ready');
+            const readyDiv = document.createElement('div');
+            readyDiv.id = 'pdf-ready-signal';
+            document.body.appendChild(readyDiv);
+        });
+    </script>
     </body>
     </html>
     `;

@@ -249,6 +249,14 @@ export const generatePdf = async (req, res) => {
         if (pdfHTML) {
             // BACKEND GENERATION: Set HTML directly
             await page.setContent(pdfHTML, { waitUntil: 'domcontentloaded' });
+
+            // Wait for images to fully load (signaled by script in template)
+            try {
+                // console.log('[PDF] Waiting for image preloader...');
+                await page.waitForSelector('#pdf-ready-signal', { timeout: 30000 });
+            } catch (e) {
+                console.warn('[PDF] Timeout waiting for image preloader. Snapshot might be partial.');
+            }
         } else {
             // LEGACY URL NAVIGATION
             console.log(`[PDF] Navigating to URL: ${url}`);
