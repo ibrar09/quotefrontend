@@ -5,8 +5,10 @@ import AnalyticsKPIs from '../components/AnalyticsKPIs';
 import FinancialKPIs from '../components/FinancialKPIs';
 import { RevenueTrendChart, StatusPieChart, BrandPerformanceChart, WorkTypeChart, LeaderboardCard } from '../components/AnalyticsCharts';
 import { RefreshCcw } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 const AnalyticsDashboard = () => {
+    const { darkMode } = useTheme();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -57,12 +59,17 @@ const AnalyticsDashboard = () => {
             {/* Header */}
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Analytics Overview</h1>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Real-time business intelligence and performance metrics.</p>
+                    <h1 className={`text-2xl font-bold ${darkMode ? "text-white" : "text-black"}`}>Analytics Overview</h1>
+                    <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}>Real-time business intelligence and performance metrics.</p>
                 </div>
                 <button
                     onClick={fetchAnalytics}
-                    className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-medium text-gray-600 dark:text-gray-200 transition-colors shadow-sm"
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors shadow-sm
+                        ${darkMode
+                            ? "bg-gray-800 border-gray-700 hover:bg-gray-700 text-gray-200"
+                            : "bg-white border-gray-200 hover:bg-gray-50 text-gray-600"
+                        }
+                    `}
                 >
                     <RefreshCcw className="w-4 h-4" />
                     Refresh Data
@@ -72,7 +79,7 @@ const AnalyticsDashboard = () => {
             {/* KPI Cards */}
             <div className="space-y-6">
                 <AnalyticsKPIs data={data.kpis} />
-                <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-200 pl-1">Financial Health</h2>
+                <h2 className={`text-lg font-semibold pl-1 ${darkMode ? "text-gray-200" : "text-black"}`}>Financial Health</h2>
                 <FinancialKPIs data={data.financials} />
             </div>
 

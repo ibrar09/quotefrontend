@@ -1,25 +1,47 @@
 import React from 'react';
 import { FileText, Tag, BarChart2, Clock } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
-const KPICard = ({ title, value, subtext, icon: Icon, color, iconBg }) => (
-    <div className="bg-white dark:bg-[#1f1f2e] p-6 rounded-2xl border border-gray-100 dark:border-gray-700/50 shadow-sm hover:shadow-md transition-all duration-300 group">
-        <div className="flex items-start justify-between mb-4">
-            <div className={`p-3 rounded-xl ${iconBg} dark:bg-opacity-10 group-hover:scale-110 transition-transform duration-300`}>
-                <Icon className={`w-6 h-6 ${color} dark:text-gray-100`} />
+const KPICard = ({ title, value, subtext, icon: Icon, color, iconBg }) => {
+    const { darkMode } = useTheme();
+
+    return (
+        <div className={`
+            p-6 rounded-2xl border shadow-sm hover:shadow-md transition-all duration-300 group
+            ${darkMode
+                ? "bg-[#1f1f2e] border-gray-700/50"
+                : "bg-white border-gray-100"
+            }
+        `}>
+            <div className="flex items-start justify-between mb-4">
+                <div className={`p-3 rounded-xl transition-transform duration-300 group-hover:scale-110 
+                    ${darkMode ? "bg-opacity-10" : iconBg}
+                `}>
+                    <Icon className={`w-6 h-6 ${darkMode ? "text-gray-100" : color}`} />
+                </div>
+                {subtext && (
+                    <span className={`text-xs font-semibold px-2 py-1 rounded-lg border 
+                        ${darkMode
+                            ? "bg-gray-800/50 text-gray-400 border-gray-700"
+                            : "bg-gray-50 text-gray-500 border-gray-100"
+                        }
+                    `}>
+                        {subtext}
+                    </span>
+                )}
             </div>
-            {subtext && (
-                <span className="text-xs font-semibold px-2 py-1 bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 rounded-lg border border-gray-100 dark:border-gray-700">
-                    {subtext}
-                </span>
-            )}
-        </div>
 
-        <div>
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-1 tracking-tight">{value}</h3>
-            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{title}</p>
+            <div>
+                <h3 className={`text-2xl font-bold mb-1 tracking-tight ${darkMode ? "text-white" : "text-gray-900"}`}>
+                    {value}
+                </h3>
+                <p className={`text-sm font-medium ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                    {title}
+                </p>
+            </div>
         </div>
-    </div>
-);
+    );
+};
 
 const FinancialKPIs = ({ data }) => {
     if (!data) return null;

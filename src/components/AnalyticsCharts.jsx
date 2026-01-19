@@ -4,18 +4,23 @@ import {
     PieChart, Pie, Cell, BarChart, Bar, Legend
 } from 'recharts';
 
+import { useTheme } from '../context/ThemeContext';
+
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 const CustomTooltip = ({ active, payload, label, formatter }) => {
+    const { darkMode } = useTheme();
     if (active && payload && payload.length) {
         return (
-            <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-md p-4 rounded-xl shadow-xl border border-white/20 dark:border-gray-700">
-                {label && <p className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">{label}</p>}
+            <div className={`p-4 rounded-xl shadow-xl border backdrop-blur-md 
+                ${darkMode ? "bg-gray-800/90 border-gray-700" : "bg-white/90 border-white/20"}
+            `}>
+                {label && <p className={`text-sm font-semibold mb-2 ${darkMode ? "text-gray-200" : "text-gray-700"}`}>{label}</p>}
                 {payload.map((entry, index) => (
                     <div key={index} className="flex items-center gap-2 text-sm">
                         <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
-                        <span className="text-gray-500 dark:text-gray-400 capitalize">{entry.name}:</span>
-                        <span className="font-bold text-gray-800 dark:text-gray-100">
+                        <span className={`capitalize ${darkMode ? "text-gray-400" : "text-gray-500"}`}>{entry.name}:</span>
+                        <span className={`font-bold ${darkMode ? "text-gray-100" : "text-gray-800"}`}>
                             {formatter ? formatter(entry.value, entry.name)[0] : entry.value}
                         </span>
                     </div>
@@ -27,14 +32,19 @@ const CustomTooltip = ({ active, payload, label, formatter }) => {
 };
 
 export const RevenueTrendChart = ({ data }) => {
+    const { darkMode } = useTheme();
     return (
-        <div className="bg-white dark:bg-[#1f1f2e] p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-800 h-96 transition-all hover:shadow-xl group">
+        <div className={`p-6 rounded-2xl shadow-lg border h-96 transition-all hover:shadow-xl group
+            ${darkMode ? "bg-[#1f1f2e] border-gray-800" : "bg-white border-gray-100"}
+        `}>
             <div className="flex justify-between items-center mb-6">
                 <div>
-                    <h3 className="text-lg font-bold text-gray-800 dark:text-white">Revenue Trend</h3>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 font-medium mt-1">Last 6 Months Performance</p>
+                    <h3 className={`text-lg font-bold ${darkMode ? "text-white" : "text-gray-800"}`}>Revenue Trend</h3>
+                    <p className={`text-xs font-medium mt-1 ${darkMode ? "text-gray-500" : "text-gray-400"}`}>Last 6 Months Performance</p>
                 </div>
-                <div className="px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 rounded-full text-xs font-semibold">
+                <div className={`px-3 py-1 rounded-full text-xs font-semibold 
+                    ${darkMode ? "bg-indigo-900/30 text-indigo-300" : "bg-indigo-50 text-indigo-600"}
+                `}>
                     Growth Analysis
                 </div>
             </div>
@@ -77,9 +87,12 @@ export const RevenueTrendChart = ({ data }) => {
 };
 
 export const StatusPieChart = ({ data }) => {
+    const { darkMode } = useTheme();
     return (
-        <div className="bg-white dark:bg-[#1f1f2e] p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-800 h-96 transition-all hover:shadow-xl">
-            <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-6">Job Status Distribution</h3>
+        <div className={`p-6 rounded-2xl shadow-lg border h-96 transition-all hover:shadow-xl
+            ${darkMode ? "bg-[#1f1f2e] border-gray-800" : "bg-white border-gray-100"}
+        `}>
+            <h3 className={`text-lg font-bold mb-6 ${darkMode ? "text-white" : "text-gray-800"}`}>Job Status Distribution</h3>
             <ResponsiveContainer width="100%" height="85%">
                 <PieChart>
                     <Pie
@@ -110,9 +123,12 @@ export const StatusPieChart = ({ data }) => {
 };
 
 export const BrandPerformanceChart = ({ data }) => {
+    const { darkMode } = useTheme();
     return (
-        <div className="bg-white dark:bg-[#1f1f2e] p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-800 h-96 transition-all hover:shadow-xl">
-            <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-6">Top Brands by Revenue</h3>
+        <div className={`p-6 rounded-2xl shadow-lg border h-96 transition-all hover:shadow-xl
+            ${darkMode ? "bg-[#1f1f2e] border-gray-800" : "bg-white border-gray-100"}
+        `}>
+            <h3 className={`text-lg font-bold mb-6 ${darkMode ? "text-white" : "text-gray-800"}`}>Top Brands by Revenue</h3>
             <ResponsiveContainer width="100%" height="85%">
                 <BarChart layout="vertical" data={data} barSize={24} margin={{ left: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f3f4f6" strokeOpacity={0.1} />
@@ -138,11 +154,14 @@ export const BrandPerformanceChart = ({ data }) => {
 };
 
 export const WorkTypeChart = ({ data }) => {
+    const { darkMode } = useTheme();
     const height = Math.max(350, data.length * 50);
 
     return (
-        <div className="bg-white dark:bg-[#1f1f2e] p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-800 h-96 overflow-y-auto transition-all hover:shadow-xl custom-scrollbar dark:custom-scrollbar-dark">
-            <h3 className="text-lg font-bold text-gray-800 dark:text-white mb-6">Revenue & Volume by Work Type</h3>
+        <div className={`p-6 rounded-2xl shadow-lg border h-96 overflow-y-auto transition-all hover:shadow-xl custom-scrollbar dark:custom-scrollbar-dark
+            ${darkMode ? "bg-[#1f1f2e] border-gray-800" : "bg-white border-gray-100"}
+        `}>
+            <h3 className={`text-lg font-bold mb-6 ${darkMode ? "text-white" : "text-gray-800"}`}>Revenue & Volume by Work Type</h3>
             <div style={{ height: `${height}px` }}>
                 <ResponsiveContainer width="100%" height="100%">
                     <BarChart layout="vertical" data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }} barSize={18}>
@@ -173,13 +192,18 @@ export const WorkTypeChart = ({ data }) => {
 };
 
 export const LeaderboardCard = ({ title, data, icon: Icon, color = "bg-blue-500" }) => {
+    const { darkMode } = useTheme();
     return (
-        <div className="bg-white dark:bg-[#1f1f2e] p-6 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-800 h-96 overflow-y-auto transition-all hover:shadow-xl custom-scrollbar dark:custom-scrollbar-dark">
-            <div className="flex items-center gap-3 mb-6 sticky top-0 bg-white dark:bg-[#1f1f2e] z-10 pb-2 border-b border-gray-50 dark:border-gray-800">
+        <div className={`p-6 rounded-2xl shadow-lg border h-96 overflow-y-auto transition-all hover:shadow-xl custom-scrollbar dark:custom-scrollbar-dark
+            ${darkMode ? "bg-[#1f1f2e] border-gray-800" : "bg-white border-gray-100"}
+        `}>
+            <div className={`flex items-center gap-3 mb-6 sticky top-0 z-10 pb-2 border-b
+                ${darkMode ? "bg-[#1f1f2e] border-gray-800" : "bg-white border-gray-50"}
+            `}>
                 <div className={`p-2 rounded-lg ${color} bg-opacity-10`}>
                     {Icon ? <Icon className={`w-5 h-5 ${color.replace('bg-', 'text-')}`} /> : <div className="w-5 h-5" />}
                 </div>
-                <h3 className="text-lg font-bold text-gray-800 dark:text-white">{title}</h3>
+                <h3 className={`text-lg font-bold ${darkMode ? "text-white" : "text-gray-800"}`}>{title}</h3>
             </div>
 
             <div className="space-y-4">
