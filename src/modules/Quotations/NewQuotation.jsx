@@ -1134,7 +1134,7 @@ const NewQuotation = () => {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, x: -10 }}
                       transition={{ duration: 0.15 }}
-                      className={`align-top leading-tight uppercase font-semibold text-[10px] group/row ${activeRow === index ? 'bg-blue-50/20' : ''}`}
+                      className={`align-top leading-tight font-semibold text-[10px] group/row ${activeRow === index ? 'bg-blue-50/20' : ''}`}
                       style={{ zIndex: activeRow === index ? 50 : 1, position: 'relative' }}
                     >
                       <td
@@ -1147,7 +1147,7 @@ const NewQuotation = () => {
                         <input
                           data-row={index}
                           data-col="code"
-                          className="w-full outline-none text-center bg-transparent no-print placeholder:opacity-30"
+                          className="w-full outline-none text-center bg-transparent no-print placeholder:opacity-30 uppercase"
                           placeholder="Code"
                           value={item.code}
                           onChange={(e) => handleItemSearch(index, 'code', e.target.value)}
@@ -1227,7 +1227,7 @@ const NewQuotation = () => {
                         <input
                           data-row={index}
                           data-col="unit"
-                          className="w-full outline-none text-center bg-transparent no-print font-bold"
+                          className="w-full outline-none text-center bg-transparent no-print font-bold uppercase"
                           value={item.unit}
                           onChange={(e) => handleItemChange(item.id, 'unit', e.target.value)}
                           onFocus={(e) => {
