@@ -747,6 +747,10 @@ const NewQuotation = () => {
       const quoteId = savedJob.id;
       console.log("Requesting Backend PDF for ID:", quoteId);
 
+      // CRITICAL: Wait for backend to fully process uploaded images
+      // This prevents race condition where PDF is generated before images are queryable
+      await new Promise(resolve => setTimeout(resolve, 800));
+
       // 2. Generate PDF using the ID (BACKEND GENERATION)
       // We now always have a quoteId because we saved it above.
       const payload = {
