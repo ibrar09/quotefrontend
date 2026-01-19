@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Camera, X, Save, ArrowRight, Search, Loader2, CheckCircle2, AlertCircle, Trash2, Plus, Printer, Download, Upload } from 'lucide-react';
 import axios from 'axios';
 import { useNavigate, useLocation } from 'react-router-dom';
+import toast, { Toaster } from 'react-hot-toast';
 import logoSrc from '../../assets/Maaj-Logo 04.png';
 import signature from '../../assets/signature.jpeg';
 import stamp from '../../assets/stamp.jpeg';
@@ -640,13 +641,25 @@ const NewQuotation = () => {
           setRawFiles([]);
         }
 
+        // Show success toast
+        toast.success(`✅ Draft saved successfully! Quote #${savedJob.quote_no}`, {
+          duration: 3000,
+          position: 'top-right',
+        });
+
         return savedJob;
       }
     } catch (err) {
       console.error("Save failed:", err);
       const errorMsg = err.response?.data?.message || err.message || 'Failed to save quotation';
       const details = err.response?.data?.details;
-      alert(`Save failed: ${errorMsg}${details ? '\n\nDetails: ' + JSON.stringify(details) : ''}`);
+
+      // Show error toast
+      toast.error(`❌ Save failed: ${errorMsg}`, {
+        duration: 4000,
+        position: 'top-right',
+      });
+
       return null;
     }
   };
@@ -795,6 +808,26 @@ const NewQuotation = () => {
 
   return (
     <div className={`min-h-screen md:py-8 py-2 overflow-x-hidden transition-colors duration-500 ${themeStyles.container}`} style={{ fontFamily: "'Outfit', sans-serif" }}>
+      {/* Toast Notifications */}
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          success: {
+            style: {
+              background: '#10b981',
+              color: '#fff',
+              fontWeight: 'bold',
+            },
+          },
+          error: {
+            style: {
+              background: '#ef4444',
+              color: '#fff',
+              fontWeight: 'bold',
+            },
+          },
+        }}
+      />
       {/* Google Fonts-Outfit */}
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="true" />
