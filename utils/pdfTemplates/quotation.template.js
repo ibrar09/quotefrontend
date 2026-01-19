@@ -161,7 +161,7 @@ export const generateQuotationHTML = (data) => {
             .p-2 { padding: 6px; } /* Increased padding for table rows */
             
             /* Table */
-            table { width: 100%; border-collapse: collapse; page-break-inside: auto; }
+            table { width: 100%; border-collapse: collapse; page-break-inside: auto; table-layout: fixed; }
             tr { page-break-inside: avoid; }
             td, th { vertical-align: top; }
 
