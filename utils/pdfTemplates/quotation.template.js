@@ -210,7 +210,7 @@ export const generateQuotationHTML = (data) => {
                 </div>
                 <div class="col-4">
                     <div class="label-cell bg-gray-200 border-r border-b p-1 text-xs font-bold uppercase">Attention To</div>
-                    <div class="value-cell border-r border-b p-1 text-sm">${data.attentionTo || ''}</div>
+                    <div class="value-cell border-r border-b p-1 text-sm" style="text-transform: uppercase;">${data.attentionTo || ''}</div>
                 </div>
                 <div class="col-4">
                     <div class="half-cell bg-theme border-r border-b p-1 text-xs font-bold uppercase">Quote Revised</div>
@@ -222,11 +222,11 @@ export const generateQuotationHTML = (data) => {
             <div class="grid-row">
                 <div class="col-4">
                     <div class="label-cell bg-gray-200 border-r border-b p-1 text-xs font-bold uppercase">Brand</div>
-                    <div class="value-cell border-r border-b p-1 text-sm">${data.brand || ''}</div>
+                    <div class="value-cell border-r border-b p-1 text-sm" style="text-transform: uppercase;">${data.brand || ''}</div>
                 </div>
                 <div class="col-4">
                     <div class="label-cell bg-gray-200 border-r border-b p-1 text-xs font-bold uppercase">Quote #</div>
-                    <div class="value-cell border-r border-b p-1 text-sm">${data.quote_no || ''}</div>
+                    <div class="value-cell border-r border-b p-1 text-sm" style="text-transform: uppercase;">${data.quote_no || ''}</div>
                 </div>
                 <div class="col-4">
                     <div class="half-cell bg-gray-200 border-r border-b p-1 text-xs font-bold uppercase">Validity</div>
@@ -238,11 +238,11 @@ export const generateQuotationHTML = (data) => {
             <div class="grid-row">
                 <div class="col-4">
                     <div class="label-cell bg-gray-200 border-r border-b p-1 text-xs font-bold uppercase">Location</div>
-                    <div class="value-cell border-r border-b p-1 text-sm">${data.location || '-'}</div>
+                    <div class="value-cell border-r border-b p-1 text-sm" style="text-transform: uppercase;">${data.location || '-'}</div>
                 </div>
                 <div class="col-4">
                     <div class="label-cell bg-gray-200 border-r border-b p-1 text-xs font-bold uppercase">MR #</div>
-                    <div class="value-cell border-r border-b p-1 text-sm">${data.mr_no || ''}</div>
+                    <div class="value-cell border-r border-b p-1 text-sm" style="text-transform: uppercase;">${data.mr_no || ''}</div>
                 </div>
                 <div class="col-4">
                      <div class="half-cell bg-theme border-r border-b p-1 text-xs font-bold uppercase">MR Rec Date</div>
