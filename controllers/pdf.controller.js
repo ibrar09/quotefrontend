@@ -300,7 +300,11 @@ export const generatePdf = async (req, res) => {
             printBackground: true,
             displayHeaderFooter: true,
             headerTemplate: headerTemplate,
-            footerTemplate: '<div></div>',
+            footerTemplate: `
+                <div style="font-size: 8px; font-family: sans-serif; width: 100%; text-align: center; color: #888; padding-bottom: 5px;">
+                    Page <span class="pageNumber"></span> of <span class="totalPages"></span>
+                </div>
+            `,
             margin: {
                 top: '35mm',      // Header space
                 bottom: '15mm',
