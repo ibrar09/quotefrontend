@@ -795,7 +795,7 @@ const QuotationList = () => {
                 <div className="relative w-full md:w-64">
                     <input
                         type="text"
-                        placeholder="Search Quote, Location, Invoice..."
+                        placeholder="Search Quote, Location, City, Invoice..."
                         className={`w-full pl-10 pr-4 py-2 rounded-lg border ${darkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200 text-gray-900'} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
