@@ -379,6 +379,7 @@ export const listQuotations = async (page = 1, limit = 300, filters = {}) => {
     include: [
       {
         model: Store,
+        required: false, // Ensure LEFT JOIN even if referenced in WHERE
         attributes: ['mall', 'city', 'region', 'brand']
       },
       {
