@@ -58,7 +58,7 @@ app.use(helmet({
 
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 200, // Limit each IP to 200 requests per windowMs
+    max: 3000, // Increased from 200 to 3000 to handle polling/search
     standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
     legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 });

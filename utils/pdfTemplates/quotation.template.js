@@ -35,52 +35,12 @@ export const generateQuotationHTML = (data) => {
     const grandTotal = totalWithAdj + vat;
 
     // --- Pagination / Spacing Logic ---
-    // Estimate content height to determine if we need filler rows to avoid gaps on Page 1
-    // when the footer is pushed to Page 2.
-    let estimatedTableHeight = 0;
-    items.forEach(item => {
-        const descLen = (item.description || '').length;
-        // Approx chars per line: 80. Line height ~14px. Base padding ~12px.
-        const lines = Math.floor(descLen / 80) + 1;
-        // Estimate height per item: Base 30px + extra lines
-        estimatedTableHeight += Math.max(35, lines * 14 + 16);
-    });
+    // REMOVED: Manual height calculation and dynamic padding/filler rows.
+    // We now rely on standard CSS pagination (page-break properties) to handle overflow naturally.
 
-    // Thresholds (in pixels approx)
-    // If content > ~450px, the Footer (Images+Totals) usually jumps to Page 2.
-    // If that happens, we want the Table to extend to ~850px to fill Page 1.
-    const SINGLE_PAGE_THRESHOLD = 450;
-    const PAGE_1_TARGET_HEIGHT = 850;
+    const dynamicPadding = 6;
+    const finalFillerCount = 0; // consistent variable just in case, but unused in new logic
 
-    let finalFillerCount = 0;
-    let dynamicPadding = 6; // Default p-2 is approx 6px-8px. Let's start with base 6px.
-    const MAX_PADDING = 16; // Don't let rows get too tall (looks weird)
-    const MIN_ROWS = 10;
-
-    // Logic: If footer pushed to Page 2 (estimated > 450), we want to fill Page 1 (target 850).
-    // First, try to expand rows by identifying the "gap".
-    if (estimatedTableHeight > SINGLE_PAGE_THRESHOLD && estimatedTableHeight < PAGE_1_TARGET_HEIGHT) {
-        const gap = PAGE_1_TARGET_HEIGHT - estimatedTableHeight;
-        // How much extra padding per row (top+bottom) can we add?
-        // extra total padding per item = gap / items.length
-        // extra one-side padding = (gap / items.length) / 2
-        const extraPaddingPerSide = Math.floor((gap / items.length) / 2);
-
-        // Apply, but cap at MAX_PADDING
-        dynamicPadding = Math.min(6 + extraPaddingPerSide, MAX_PADDING);
-
-        // Recalculate used height with new padding
-        const addedHeight = (dynamicPadding - 6) * 2 * items.length;
-        const newEstimatedHeight = estimatedTableHeight + addedHeight;
-
-        // If there is STILL a gap, fill it with filler rows
-        const remainingGap = PAGE_1_TARGET_HEIGHT - newEstimatedHeight;
-        const calculatedFiller = Math.ceil(remainingGap / 35); // ~35px per expanded filler row
-        finalFillerCount = Math.max(0, calculatedFiller);
-    } else {
-        // Standard small quote or huge quote
-        finalFillerCount = Math.max(0, MIN_ROWS - items.length);
-    }
 
 
     // --- Template String ---
@@ -214,7 +174,9 @@ export const generateQuotationHTML = (data) => {
 
         <!-- INFO GRID (First Page Details) -->
         <!-- Note: Borders handled on cells to match frontend 'border-r border-b' pattern -->
-        <div style="border-top: 1px solid black; border-left: 1px solid black; margin-bottom: 4px;">
+        <div id="info-grid" style="border-top: 1px solid black; border-left: 1px solid black; margin-bottom: 4px;">
+            <!-- content omitted (unchanged) -->
+            ${ /* Just adding ID, but replace_file needs context. Use larger chunks in next step or carefully target. */ ''}
             
             <!-- ROW 1 -->
             <div class="grid-row">
@@ -305,7 +267,7 @@ export const generateQuotationHTML = (data) => {
         </div>
 
         <!-- ITEMS TABLE -->
-        <div class="table-wrapper">
+        <div id="items-table" class="table-wrapper">
         <table>
             <thead>
                 <tr class="bg-gray-100 font-bold uppercase text-[9px]">
@@ -334,20 +296,7 @@ export const generateQuotationHTML = (data) => {
                 `).join('')}
 
                 <!-- FILLER ROWS (Dynamic Spacing) -->
-                ${(() => {
-            if (finalFillerCount <= 0) return '';
-            return Array(finalFillerCount).fill(0).map(() => `
-                        <tr>
-                            <td class="col-code border-r border-l" style="height: 30px;">&nbsp;</td>
-                            <td class="col-desc border-r">&nbsp;</td>
-                            <td class="col-unit border-r">&nbsp;</td>
-                            <td class="col-qty border-r">&nbsp;</td>
-                            <td class="col-mat border-r">&nbsp;</td>
-                            <td class="col-lab border-r">&nbsp;</td>
-                            <td class="col-tot border-r">&nbsp;</td>
-                        </tr>
-                    `).join('');
-        })()}
+                <!-- FILLER ROWS REMOVED -->
                 
                 <!-- TOTALS ROW FOR ITEMS -->
                  <tr class="font-bold bg-gray-100 uppercase text-sm">
@@ -361,7 +310,8 @@ export const generateQuotationHTML = (data) => {
         </div>
 
          <!-- WRAPPER FOR IMAGES AND TOTALS -->
-         <div style="display: flex; margin-top: 4px; border: none; page-break-inside: avoid;">
+         <!-- PAGE BREAK AVOID: Forces this block to stay together. Moves to next page if it doesn't fit. -->
+         <div id="footer-section" style="display: flex; margin-top: 4px; border: none; page-break-inside: avoid;">
             
             <!-- LEFT: IMAGES (50%) -->
             <div style="width: 50%; padding-right: 4px;">
@@ -486,17 +436,67 @@ export const generateQuotationHTML = (data) => {
           <div class="bg-theme text-center font-bold p-1 border-y-2 border-black mt-4 uppercase text-[9px] tracking-[0.2em]">APPROVALS</div>
 
     <script>
-        // Wait for all images to load before signaling ready
         window.addEventListener('load', async () => {
+            // 1. Wait for Images
             const images = Array.from(document.images);
             await Promise.all(images.map(img => {
                 if (img.complete) return Promise.resolve();
                 return new Promise(resolve => {
                     img.onload = resolve;
-                    img.onerror = resolve; // Continue even if one fails
+                    img.onerror = resolve; 
                 });
             }));
-            // Signal Puppeteer that we are ready
+
+            // 2. Smart Filler Logic
+            const PAGE_HEIGHT = 920; // Safe content height for A4 (1123px - margins 130px - buffer)
+            const MIN_GAP = 50; // Don't fill if gap is small
+            const info = document.getElementById('info-grid');
+            const tableWrapper = document.getElementById('items-table'); // Wrapper
+            const footer = document.getElementById('footer-section');
+            const term = document.querySelector('.bg-theme.text-center.font-bold.p-1.mb-1.uppercase.text-xs'); // Start of footer terms
+
+            if (info && tableWrapper && footer) {
+                // Measure initial heights
+                const infoH = info.offsetHeight;
+                const tableH = tableWrapper.offsetHeight;
+                const totalFirstPageContent = infoH + tableH + footer.offsetHeight;
+
+                // Scenario: Footer is pushed to Page 2, but Table is on Page 1, leaving a gap.
+                // We detect this if total > PAGE_HEIGHT (multipage) AND (info + table) < PAGE_HEIGHT
+                
+                // Note: document.body.scrollHeight gives total document height.
+                const totalDocHeight = document.body.scrollHeight;
+
+                if (totalDocHeight > PAGE_HEIGHT) {
+                   const contentBeforeFooter = infoH + tableH;
+                   
+                   // Check if there is a significant gap on Page 1
+                   if (contentBeforeFooter < (PAGE_HEIGHT - MIN_GAP)) {
+                       const gap = PAGE_HEIGHT - contentBeforeFooter - 20; // -20px buffer
+                       
+                       // Distribute gap to table rows
+                       const rows = tableWrapper.querySelectorAll('tbody tr:not(.bg-gray-100)'); // Exclude total row
+                       const rowCount = rows.length;
+                       
+                       if (rowCount > 0 && gap > 0) {
+                           const extraPerSide = Math.floor((gap / rowCount) / 2);
+                           // Apply extra padding
+                           rows.forEach(row => {
+                               const cells = row.querySelectorAll('td');
+                               cells.forEach(cell => {
+                                   const currentPad = parseInt(window.getComputedStyle(cell).paddingTop) || 6;
+                                   const newPad = currentPad + extraPerSide;
+                                   cell.style.paddingTop = newPad + 'px';
+                                   cell.style.paddingBottom = newPad + 'px';
+                               });
+                           });
+                           console.log('Applied smart filler: Added ' + extraPerSide + 'px padding per side to ' + rowCount + ' rows.');
+                       }
+                   }
+                }
+            }
+
+            // 3. Signal Ready
             document.body.classList.add('pdf-ready');
             const readyDiv = document.createElement('div');
             readyDiv.id = 'pdf-ready-signal';
