@@ -123,7 +123,15 @@ export const listQuotations = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 300;
 
-    const quotations = await quotationService.listQuotations(page, limit);
+    // [NEW] Extract filters
+    const filters = {
+      city: req.query.city,
+      date: req.query.date,
+      month: req.query.month, // [NEW]
+      year: req.query.year    // [NEW]
+    };
+
+    const quotations = await quotationService.listQuotations(page, limit, filters);
 
     res.status(200).json({
       success: true,

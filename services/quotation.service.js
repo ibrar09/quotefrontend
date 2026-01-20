@@ -250,123 +250,54 @@ export const getQuotationById = async (jobId) => {
 export const listQuotations = async (page = 1, limit = 300, filters = {}) => {
   const offset = (page - 1) * limit;
 
-  // 1. Build Main Job Filter
-  const whereClause = {
+  const where = {
     is_latest: true,
     quote_status: { [Op.notIn]: ['INTAKE', 'PREVIEW'] }
   };
 
-  // Filter: Location (Partial Match)
-  if (filters.location) {
-    whereClause.location = { [Op.iLike]: `%${filters.location}%` };
+  // [NEW] Add City Filter
+  if (filters.city) {
+    where.city = { [Op.iLike]: `%${filters.city}%` };
   }
 
-  // Filter: Store CCID (Partial Match on oracle_ccid)
-  if (filters.store_ccid) {
-    whereClause.oracle_ccid = { [Op.iLike]: `%${filters.store_ccid}%` };
+  // [NEW] Add Date Filter (createdAt)
+  if (filters.date) {
+    // Assuming filters.date is "YYYY-MM-DD"
+    // We need to match the whole day.
+    const startOfDay = new Date(filters.date);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(filters.date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    where.createdAt = {
+      [Op.between]: [startOfDay, endOfDay]
+    };
   }
 
-  // Filter: Status
-  if (filters.status && filters.status !== 'ALL') {
-    whereClause.quote_status = filters.status;
+  // [NEW] Add Month Filter (YYYY-MM)
+  if (filters.month) {
+    const [year, month] = filters.month.split('-');
+    const startOfMonth = new Date(year, month - 1, 1);
+    const endOfMonth = new Date(year, month, 0, 23, 59, 59, 999);
+
+    where.createdAt = {
+      [Op.between]: [startOfMonth, endOfMonth]
+    };
   }
 
-  // Filter: Region
-  if (filters.region && filters.region !== 'ALL') {
-    whereClause.region = filters.region;
-  }
+  // [NEW] Add Year Filter (YYYY)
+  if (filters.year) {
+    const year = parseInt(filters.year);
+    const startOfYear = new Date(year, 0, 1);
+    const endOfYear = new Date(year, 11, 31, 23, 59, 59, 999);
 
-  // Filter: Brand
-  if (filters.brand && filters.brand !== 'ALL') {
-    // Determine if it's a group or single brand is handled frontend side usually via fetching group members
-    // But for direct match:
-    whereClause.brand = filters.brand; // Or use Op.or with brand_name
-  }
-
-  // Filter: Month & Year (createdAt)
-  if (filters.month || filters.year) {
-    const dateQuery = {};
-    const year = parseInt(filters.year) || new Date().getFullYear();
-
-    if (filters.month) {
-      // Check if format is 'YYYY-MM' or just month index
-      // Assuming input is month index (1-12) or name. Let's handle month index 1-12.
-      // safer to accept YYYY-MM from frontend if possible, but let's assume separate params
-      const monthIndex = parseInt(filters.month) - 1; // JS Date is 0-11
-      const startDate = new Date(year, monthIndex, 1);
-      const endDate = new Date(year, monthIndex + 1, 0, 23, 59, 59); // Last day of month
-      whereClause.createdAt = { [Op.between]: [startDate, endDate] };
-    } else {
-      // Year only
-      const startDate = new Date(year, 0, 1);
-      const endDate = new Date(year, 11, 31, 23, 59, 59);
-      whereClause.createdAt = { [Op.between]: [startDate, endDate] };
-    }
-  }
-
-  // 2. Build Includable Filters (Invoice No)
-  // We need to conditionally add 'required: true' to includes ONLY if we are filtering by them.
-  // Otherwise, we want LEFT OUTER JOIN (default) to keep showing jobs even without PO/Finance.
-
-  // 2. Generic Search (Unified Field Search)
-  if (filters.search) {
-    const s = `%${filters.search}%`;
-    whereClause[Op.or] = [
-      { quote_no: { [Op.iLike]: s } },
-      { mr_no: { [Op.iLike]: s } },
-      { pr_no: { [Op.iLike]: s } },
-      { work_description: { [Op.iLike]: s } },
-      { oracle_ccid: { [Op.iLike]: s } }, // Store ID
-      { location: { [Op.iLike]: s } },
-      { city: { [Op.iLike]: s } },
-      { brand: { [Op.iLike]: s } },
-      { brand_name: { [Op.iLike]: s } },
-      // Search Linked Store Details
-      { '$Store.mall$': { [Op.iLike]: s } },
-      { '$Store.city$': { [Op.iLike]: s } },
-      // Nested Fields via $Syntax$ (Requires subQuery: false)
-      { '$PurchaseOrders.po_no$': { [Op.iLike]: s } },
-      { '$PurchaseOrders.Finance.invoice_no$': { [Op.iLike]: s } }
-    ];
-
-    // Smart Date Search (YYYY-MM or YYYY)
-    const datePattern = /^\d{4}(-\d{2})?$/; // Matches 2025 or 2025-01
-    if (datePattern.test(filters.search)) {
-      const parts = filters.search.split('-');
-      const year = parseInt(parts[0]);
-      const month = parts[1] ? parseInt(parts[1]) - 1 : null; // 0-indexed
-
-      let startDate, endDate;
-
-      if (month !== null) {
-        // Month Search
-        startDate = new Date(year, month, 1);
-        endDate = new Date(year, month + 1, 0, 23, 59, 59);
-      } else {
-        // Year Search
-        startDate = new Date(year, 0, 1);
-        endDate = new Date(year, 11, 31, 23, 59, 59);
-      }
-
-      // Add Date Range to OR conditions
-      whereClause[Op.or].push({ createdAt: { [Op.between]: [startDate, endDate] } });
-    }
-  }
-
-  // 3. Keep Specific Filter Logic (Optional for backward compat)
-  const financeWhere = {};
-  const poWhere = {};
-  let requiredFinance = false;
-  let requiredPO = false;
-
-  // Specific Invoice Filter (Keep for backward compat or if used)
-  if (filters.invoice_no) {
-    financeWhere.invoice_no = { [Op.iLike]: `%${filters.invoice_no}%` };
-    requiredFinance = true;
+    where.createdAt = {
+      [Op.between]: [startOfYear, endOfYear]
+    };
   }
 
   return Job.findAll({
-    subQuery: false, // REQUIRED for filtering by nested columns (Invoice No, PO No) in top-level WHERE
     attributes: [
       'id', 'quote_no', 'mr_no', 'mr_date', 'pr_no', 'brand', 'brand_name',
       'location', 'city', 'region', 'quote_status', 'work_status',
@@ -375,21 +306,17 @@ export const listQuotations = async (page = 1, limit = 300, filters = {}) => {
       'completed_by', 'supervisor', 'comments', 'craftsperson_notes',
       'check_in_date', 'check_in_time', 'mr_priority', 'currency', 'version'
     ],
-    where: whereClause,
+    where,
     include: [
       {
         model: Store,
-        required: false, // Ensure LEFT JOIN even if referenced in WHERE
         attributes: ['mall', 'city', 'region', 'brand']
       },
       {
         model: PurchaseOrder,
-        required: requiredFinance, // Force INNER JOIN if filtering by Invoice
         attributes: ['po_no', 'po_date', 'amount_ex_vat', 'total_inc_vat', 'eta', 'update_notes'],
         include: [{
           model: Finance,
-          where: requiredFinance ? financeWhere : undefined,
-          required: requiredFinance, // Force INNER JOIN if filtering by Invoice
           attributes: [
             'invoice_no', 'invoice_status', 'received_amount', 'invoice_date',
             'payment_date', 'payment_month', 'hsbc_no', 'vat_status', 'vat_duration',
@@ -402,6 +329,9 @@ export const listQuotations = async (page = 1, limit = 300, filters = {}) => {
     order: [['createdAt', 'DESC']],
     limit: limit,
     offset: offset,
+    // [Performance] Subqueries can be slow, but needed for includes with limits in 1:M specific cases.
+    // However, Job is 1:1 with Store (mostly) and 1:M with PO but we only take first usually.
+    // subQuery: false // Try toggle if issues arise
   });
 };
 

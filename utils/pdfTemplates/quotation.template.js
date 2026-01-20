@@ -163,7 +163,12 @@ export const generateQuotationHTML = (data) => {
             /* Table */
             table { width: 100%; border-collapse: collapse; page-break-inside: auto; table-layout: fixed; }
             tr { page-break-inside: avoid; }
-            td, th { vertical-align: top; }
+            td, th { 
+                vertical-align: top; 
+                word-wrap: break-word; 
+                overflow-wrap: break-word; 
+                word-break: break-word;
+            }
 
             /* GRID SYSTEM SIMULATION (To match frontend grid-cols-12 nested grid-cols-4) */
             .grid-row { display: flex; width: 100%; }
@@ -193,6 +198,15 @@ export const generateQuotationHTML = (data) => {
             .col-mat  { width: 8%; } 
             .col-lab  { width: 8%; } 
             .col-tot  { width: 9%; }
+            
+            /* Col specific styling */
+            .col-code, .col-unit, .col-qty, .col-mat, .col-lab, .col-tot {
+                white-space: nowrap;
+            }
+            .col-desc {
+                word-wrap: break-word;
+                overflow-wrap: break-word;
+            }
             
         </style>
     </head>
@@ -307,13 +321,13 @@ export const generateQuotationHTML = (data) => {
             <tbody>
                 ${items.map(item => `
                 <tr class="font-bold text-sm">
-                    <td class="border text-center" style="padding: ${dynamicPadding}px;">${item.item_code}</td>
-                    <td class="border whitespace-pre-wrap" style="padding: ${dynamicPadding}px; text-transform: uppercase;">${item.description}</td>
-                    <td class="border text-center" style="padding: ${dynamicPadding}px;">${item.unit}</td>
-                    <td class="border text-center" style="padding: ${dynamicPadding}px;">${item.quantity}</td>
-                    <td class="border text-right" style="padding: ${dynamicPadding}px;">${fmt(item.material_price)}</td>
-                    <td class="border text-right" style="padding: ${dynamicPadding}px;">${fmt(item.labor_price)}</td>
-                    <td class="border text-right bg-gray-50" style="padding: ${dynamicPadding}px;">
+                    <td class="border text-center col-code" style="padding: ${dynamicPadding}px 4px;">${item.item_code}</td>
+                    <td class="border whitespace-pre-wrap col-desc" style="padding: ${dynamicPadding}px 4px; text-transform: uppercase;">${item.description}</td>
+                    <td class="border text-center col-unit" style="padding: ${dynamicPadding}px 4px;">${item.unit}</td>
+                    <td class="border text-center col-qty" style="padding: ${dynamicPadding}px 4px;">${item.quantity}</td>
+                    <td class="border text-right col-mat" style="padding: ${dynamicPadding}px 4px;">${fmt(item.material_price)}</td>
+                    <td class="border text-right col-lab" style="padding: ${dynamicPadding}px 4px;">${fmt(item.labor_price)}</td>
+                    <td class="border text-right bg-gray-50 col-tot" style="padding: ${dynamicPadding}px 4px;">
                         ${fmt((Number(item.quantity) * Number(item.material_price)) + Number(item.labor_price))}
                     </td>
                 </tr>
