@@ -324,6 +324,29 @@ export const listQuotations = async (page = 1, limit = 300, filters = {}) => {
       { '$PurchaseOrders.po_no$': { [Op.iLike]: s } },
       { '$PurchaseOrders.Finance.invoice_no$': { [Op.iLike]: s } }
     ];
+
+    // Smart Date Search (YYYY-MM or YYYY)
+    const datePattern = /^\d{4}(-\d{2})?$/; // Matches 2025 or 2025-01
+    if (datePattern.test(filters.search)) {
+      const parts = filters.search.split('-');
+      const year = parseInt(parts[0]);
+      const month = parts[1] ? parseInt(parts[1]) - 1 : null; // 0-indexed
+
+      let startDate, endDate;
+
+      if (month !== null) {
+        // Month Search
+        startDate = new Date(year, month, 1);
+        endDate = new Date(year, month + 1, 0, 23, 59, 59);
+      } else {
+        // Year Search
+        startDate = new Date(year, 0, 1);
+        endDate = new Date(year, 11, 31, 23, 59, 59);
+      }
+
+      // Add Date Range to OR conditions
+      whereClause[Op.or].push({ createdAt: { [Op.between]: [startDate, endDate] } });
+    }
   }
 
   // 3. Keep Specific Filter Logic (Optional for backward compat)
