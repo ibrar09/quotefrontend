@@ -88,7 +88,13 @@ const QuotationList = () => {
 
         // Reset page when filters change
         setPage(1);
-        fetchQuotations(1);
+        // [FIX] Pass explicit filters to avoid stale state issues
+        fetchQuotations(1, {
+            search: urlSearch || '',
+            region: urlRegion || 'ALL',
+            status: urlStatus ? urlStatus.toUpperCase() : 'ALL',
+            brand: urlBrand || 'ALL'
+        });
     }, [searchParams]);
 
     // [NEW] Fetch Brand Group members whenever brandFilter changes
