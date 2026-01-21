@@ -596,11 +596,6 @@ const NewQuotation = () => {
   }, [items, adj]);
 
   const handleSave = async (status = 'DRAFT') => {
-    // REMOVED (User Request): Validation for Store/CCID is now optional
-    // if (!header.storeCcid) {
-    //   alert('Please select a valid Store/CCID first.');
-    //   return null;
-    // }
     try {
       const payload = {
         quote_no: header.quoteNo,
@@ -652,7 +647,7 @@ const NewQuotation = () => {
       }
 
       if (res.data.success) {
-        const savedJob = res.data.data;
+        let savedJob = res.data.data;
 
         // NOW: Upload New Files if any
         if (rawFiles.length > 0) {
@@ -667,6 +662,28 @@ const NewQuotation = () => {
 
           // Clear raw files after successful upload
           setRawFiles([]);
+        }
+
+        // --- CRITICAL FIX: RE-FETCH FULL DATA TO SYNC STATE ---
+        // This ensures local 'images' state contains the persistent backend paths, not data URIs.
+        // Without this, subsequent saves would delete the images because they look like "new" filtered data URIs.
+        try {
+          const refreshRes = await axios.get(`${API_BASE_URL}/api/quotations/${savedJob.id}`);
+          if (refreshRes.data.success) {
+            const freshData = refreshRes.data.data;
+            savedJob = freshData; // Use fresh data for return
+
+            // Sync Images
+            if (freshData.JobImages && freshData.JobImages.length > 0) {
+              setImages(freshData.JobImages.map(img => img.file_path || img.image_data));
+            }
+            // Sync ID if new
+            if (!header.id) {
+              setHeader(prev => ({ ...prev, id: freshData.id }));
+            }
+          }
+        } catch (refreshErr) {
+          console.warn("State refresh failed after save:", refreshErr);
         }
 
         // Show success toast
@@ -787,10 +804,6 @@ const NewQuotation = () => {
 
       const quoteId = savedJob.id;
       console.log("Requesting Backend PDF for ID:", quoteId);
-
-      // CRITICAL: Wait for backend to fully process uploaded images
-      // This prevents race condition where PDF is generated before images are queryable
-      await new Promise(resolve => setTimeout(resolve, 800));
 
       // 2. Generate PDF using the ID (BACKEND GENERATION)
       // We now always have a quoteId because we saved it above.
